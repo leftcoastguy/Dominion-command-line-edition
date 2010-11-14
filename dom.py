@@ -3,6 +3,8 @@
 
 # to do
 
+# test what happens if you try to use a card name that is not actually in any
+# of the decks (because it will be in the shortcut map )
 
 # still quite a bit of ugliness with this design
 # getting/putting back cards for the buyCard() is retarded
@@ -42,11 +44,15 @@ class Deck:
 
         return self.__cards.pop(0)
 
+    def push( self, card ):
+        self.__cards.insert( 0, card )
+
     def extend( self, cards ):
         self.__cards.extend( cards )
 
     def shuffle( self ):
         random.shuffle( self.__cards )
+        print "...shuffling..."
         self.__numShuffles += 1
 
     def getNumShuffles( self ):
@@ -132,7 +138,7 @@ class Card:
 
 class Woodcutter( Card ):
     def __init__( self ):
-        Card.__init__( self, 'woodcutter', '(wo)oodcutter', 3, 0, True, 0, "+1 buy. +2 spend." )
+        Card.__init__( self, 'woodcutter', '(wo)odcutter', 3, 0, True, 0, "+1 buy. +2 spend." )
 
     def play( self, player, turn, shortcutMap, deckMap ):
         player.numBuys += 1
@@ -344,16 +350,62 @@ class Feast( Card ):
         Card.__init__( self, 'feast', '(fe)ast', 4, 0, True, 0, "Trash this card.  Gain a card costing up to 5.")
 
     def play( self, player, turn, shortcutMap, deckMap ):
-        # trashCardsInPlay() isn't what I want
-        # there could be multiple cards in play.
-        #player.deck.trashCardsInPlay()
-        print "This card in not fully implemented yet."
-        # gain card costing up to 5
-        # refactor this card and remodel, very similiar
-        # buyCard() could take a max card cost argument
-        # and could be used for both of these cards
-        
 
+        if not buyCard( deckMap, shortcutMap, player, 5, True ):
+            player.hand.add( Feast() )
+            player.numActions += 1
+
+class Adventurer( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'adventurer', '(a)dventurer', 6, 0, True, 0, "Reveal cards from your deck until you reveal 2 treasure cards. Put those treasure cards into your hand and discard the other revealed cards." )
+
+    def play( self, player, turn, shortcutMap, deckMap ):
+
+        print "Playing Adventurer..."
+        # if the player somehow doesn't have 2 treasure cards
+        # in their deck (unlikely), prevent an endless loop?
+        treasureCards = 0
+        
+        while treasureCards < 2:
+
+            try:
+                newCard = player.deck.deal()
+            except ValueError:
+                player.deck.extend( player.discard )
+                player.deck.shuffle()
+                player.discard = Deck()
+                newCard = player.deck.deal()
+            
+            print "Dealt: ", newCard.shortcutName,
+            
+            if newCard.value:
+                print " added to hand."
+                player.hand.add( newCard )
+                treasureCards += 1
+            else:
+                print " discarded."
+                player.discard.add( newCard )
+
+class Bureaucrat( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'bureaucrat', '(b)ureaucrat', 4, 0, True, 0, "Gain a silver: put it on top of your deck.  Each other player reveals a victory card from their hand and puts it on top of their deck." )
+
+    def play( self, player, turn, shortcutMap, deckMap ):
+        player.deck.push( shortcutMap[ "silver" ] )
+        turn.attacksInPlay[ "bureaucrat" ] = turn.numPlayers - 1
+
+class Witch( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'witch', '(wi)tch', 5, 0, True, 0, "+2 cards.  Each other player takes a curse card." )
+
+    def play( self, player, turn, shortcutMap, deckMap ):
+        turn.cardsToDeal = 2
+        turn.attacksInPlay[ "witch" ] = turn.numPlayers - 1
+
+class Curse( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'curse', '(cu)rse', 0, 0, False, -1, "Worth -1 VP.")
+        
 class Estate( Card ):
     def __init__( self ):
         Card.__init__( self, 'estate', '(e)state', 2, 0, False, 1, "Worth 1 VP.")
@@ -535,7 +587,15 @@ def setUpShortcuts():
         'l': Laboratory(),
         'laboratory': Laboratory(),        
         'fe': Feast(),
-        'feast': Feast(),        
+        'feast': Feast(),
+        'a': Adventurer(),
+        'adventurer': Adventurer(),
+        'b': Bureaucrat(),
+        'bureaucrat': Bureaucrat(),
+        'cu': Curse(),
+        'curse': Curse(),
+        'wi': Witch(),
+        'witch': Witch()
         }
 
     return shortcutMap
@@ -675,12 +735,12 @@ def main():
 
     # to change the cards in play, must manually edit this list
     # for now
-    startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                      Militia(), Smithy(), Remodel(), Market(), Mine() ]
+    #startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
+    #                  Militia(), Smithy(), Remodel(), Market(), Mine() ]
 
-    #startingCards = [ Moat(), Cellar(), Village(), Chancellor(), Moneylender(),
-    #                  Militia(), Laboratory(), Remodel(), Festival(), Mine() ]
-    
+    startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
+                      Bureaucrat(), Remodel(), Witch(), Market(), Adventurer() ]    
+
     gameTable.setKingdomCards( startingCards )
 
     # set up shortcuts
@@ -808,14 +868,13 @@ def main():
                     finishedAttacks.append( cardName )
 
             for cardName in finishedAttacks:
-                del turn.attacksInPlay[ 'militia' ]
+                del turn.attacksInPlay[ cardName ]
                 
             for ( cardName, turns ) in turn.attacksInPlay.items():
             
                 if cardName == 'militia':
-                    # decrement counter 
-                    turn.attacksInPlay[ 'militia' ] -= 1
-                
+
+                    turn.attacksInPlay[ 'militia' ] -= 1                
                     print "A militia card is in play."
                     
                     if player.hand.contains( shortcutMap["moat"] ):
@@ -842,6 +901,41 @@ def main():
                                 player.hand.remove( discardCard )
                                 player.discard.add( discardCard )
 
+                if cardName == "bureaucrat":
+
+                    print "A bureaucrat card is in play."
+
+                    turn.attacksInPlay[ "bureaucrat" ] -= 1
+
+                    if player.hand.contains( shortcutMap["moat"] ):
+                        print "You deflect the attack with the moat.\n"
+                    else:
+                        
+                        cardToRemove = None
+                        for card in player.hand:
+                            if card.vp:
+                                cardToRemove = card
+                                break
+                    
+                        if cardToRemove:
+                            print "Putting %s from your hand on top of your deck.\n" % cardToRemove.shortcutName
+                            player.hand.remove( cardToRemove )
+                            player.deck.push( cardToRemove )
+                        else:
+                            print "You have no VP cards in your hand.\n"
+
+                if cardName == "witch":
+
+                    print "A witch is in play!"
+
+                    turn.attacksInPlay[ "witch" ] -= 1
+
+                    if player.hand.contains( shortcutMap["moat"] ):
+                        print "You deflect the attack with the moat.\n"
+                    else:
+                        print "You take a curse.\n"
+                        player.discard.add( Curse() )
+                        
         # show available menu options to player
         if player.numActions > 0:
             for card in player.hand:
@@ -941,6 +1035,11 @@ def main():
         # *******************************************************
             
         if task == 'x':
+            # if a feast was played, the card gets trashed
+            # after it's played
+            while player.inPlay.contains( shortcutMap[ "feast" ] ):
+                player.inPlay.remove( shortcutMap[ "feast" ] )
+                
             player.discard.extend( player.inPlay )
             player.inPlay = Deck()
             isNewHand = True
