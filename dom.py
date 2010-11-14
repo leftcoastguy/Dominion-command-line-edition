@@ -3,20 +3,14 @@
 
 # to do
 
-# card objects need comparison operator matching on card name
 
+# still quite a bit of ugliness with this design
+# getting/putting back cards for the buyCard() is retarded
 
 # create debug mode
 
-# at this point, the decks/discard list within them is a logical mess
-# some refactoring, perhaps all separate deck instance is in order?  ( hand, deck, discard, inPlay )
-
 # the decks also need to behave like a queue, since some cards are now going to be
 # put on top of the deck.  So shuffling will actually have to randomize the list
-
-# shortcuts don't show up any longer
-# probably they need to go into the card instances
-# and then print out a different string in some cases
 
 # card help
 # card help could also be used during play to display what is happening
@@ -157,24 +151,27 @@ class Cellar( Card ):
         Card.__init__( self, 'cellar', '(ce)llar', 2, 0, True, 0, "+1 action.  Discard any number of cards.  +1 card per card discarded." )
 
     def play( self, player, turn, shortcutMap, deckMap ):
-        player.numActions += 1
+
         while True:
             print "\nhand (%d): %s" % (player.numHands, player.hand)
             discardCard = raw_input("Card name to discard (q to quit)> ")
+
             if discardCard == 'q':
                 break
-            
+
+            player.numActions += 1
+
             try:
                 cardToRemove = shortcutMap[ discardCard ]
             except:
                 print "\nHuh?"
                 continue
                 
-            if player.hand.contains( cardToRemove.name ):
+            if player.hand.contains( cardToRemove ):
                 turn.cardsToDeal += 1
-                player.hand.remove( discardCard )
+                player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
-
+            
 
 class Village( Card ):
     def __init__( self ):
@@ -193,7 +190,7 @@ class Workshop( Card ):
         # gain any card costing up to 4
         # if player changes mind about buy, then don't use up this card
         if not buyCard( deckMap, shortcutMap, player, 4, True ):
-            player.hand.add( playedCard )
+            player.hand.add( Workshop() )
             player.numActions += 1
 
 
@@ -228,7 +225,7 @@ class Remodel( Card ):
                 print "Huh?"
                 continue
             
-            if player.hand.contains( trashedCard.name ):
+            if player.hand.contains( trashedCard ):
                 player.hand.remove( trashedCard )
                 break
             else:
@@ -258,19 +255,31 @@ class Mine( Card ):
         Card.__init__( self, 'mine', '(mi)ne', 5, 0, True, 0,"Trash a treasure card from your hand.  Gain a treasure card costing up to 3 more, put it in your hand.  (Basically, copper and silver upgrade to silver and gold, respectively." )
 
     def play( self, player, turn, shortcutMap, deckMap ):
+
         # dont get stuck in endless input loop if player has no valid
         # coins to trash
-        trashList = [ 'copper', 'silver' ]
+        trashList = [ "copper", "silver" ]
 
+        validAction = False
+        for cardName in trashList:
+            if player.hand.contains( shortcutMap[ cardName ] ):
+                validAction = True
+
+        if not validAction:
+            player.hand.add( Mine() )
+            player.numActions += 1
+            print "You have no copper or silver in hand."
+            return
+            
         while True:
             cardName = raw_input("Select a card to trash> ")
-            if cardName in trashList and player.hand.contains( cardName ):
-                try:
-                    trashedCard = shortcutMap[ cardName ]
-                except:
-                    print "Error: %s not in shortcutMap!" % cardName
-                    break
-                
+            try:
+                trashedCard = shortcutMap[ cardName ]
+            except:
+                print "Error: %s not in shortcutMap!" % cardName
+                break
+
+            if trashedCard.name in trashList and player.hand.contains( trashedCard ):
                 player.hand.remove( trashedCard )
                 if trashedCard.name == 'copper':
                     # TO DO: deck could be empty
@@ -281,9 +290,7 @@ class Mine( Card ):
                     mineCard = deckMap['gold'].deal()
                     player.hand.add( mineCard )
             else:
-                print "You have no copper or silver in hand."
-                player.hand.add( playedCard )
-                player.numActions += 1
+                print "Huh?"
             break
 
 
@@ -292,14 +299,14 @@ class Moneylender( Card ):
         Card.__init__( self, 'moneylender', '(mon)eylender', 4, 0, True, 0, "Trash a copper from your hand. If you do, +3 spend.")    
 
     def play( self, player, turn, shortcutMap, deckMap ):
-        
-        if not player.hand.contains( "copper" ):
+
+        copperCard = shortcutMap[ "copper" ]
+        if not player.hand.contains( copperCard ):
             print "You have no copper in hand."
-            player.hand.add( playedCard )
+            player.hand.add( Moneylender() )
             player.numActions += 1            
             return
 
-        copperCard = shortcutMap[ "copper" ]
         player.hand.remove( copperCard )
         player.spendBonus += 3
 
@@ -643,8 +650,8 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
         return True
 
     else:
-        deckMap[ cardName ].add( card )
-        print "You don't have enough for that."
+        print "You don't have enough for that."        
+        deckMap[ card.name ].add( card )
 
     return False
 
@@ -811,7 +818,7 @@ def main():
                 
                     print "A militia card is in play."
                     
-                    if player.hand.contains( 'moat' ):
+                    if player.hand.contains( shortcutMap["moat"] ):
                         print "You deflect the attack with the moat.\n"
                         
                     else:
@@ -830,7 +837,7 @@ def main():
                                 print "Huh?"
                                 continue
                             
-                            if player.hand.contains( discardCard.name ):
+                            if player.hand.contains( discardCard ):
                                 numDiscarded += 1
                                 player.hand.remove( discardCard )
                                 player.discard.add( discardCard )
@@ -872,16 +879,18 @@ def main():
         
         if task == 'a':
 
-            card = raw_input("\nCard to play> ")
+            while True:
 
-            # first see if they entered a shortcut
-            try:
-                card = shortcutMap[ card ]
-            except:
-                print "shortcutMap[ card ] failed!"
-                pass
+                card = raw_input("\nCard to play> ")
 
-            print "card from shortcutMap ", card
+                # first see if they entered a shortcut
+                try:
+                    card = shortcutMap[ card ]
+                    break
+                except:
+                    print "Huh?"
+                    continue
+
             if not player.hand.contains( card ):
                 print "You don't have that card in hand."
 
@@ -926,7 +935,6 @@ def main():
                             player.discard = Deck()
                             newCard = player.deck.deal()
 
-                        print "player.hand.add( %s )  type %s" % ( card, type(card))
                         player.hand.add( newCard )
 
 
