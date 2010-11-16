@@ -132,7 +132,7 @@ class Card:
     def __ne__( self, other ):
         return self.name != other.name
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         pass
 
 
@@ -140,7 +140,7 @@ class Woodcutter( Card ):
     def __init__( self ):
         Card.__init__( self, 'woodcutter', '(wo)odcutter', 3, 0, True, 0, "+1 buy. +2 spend." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.numBuys += 1
         player.spendBonus += 2
 
@@ -149,14 +149,14 @@ class Moat( Card ):
     def __init__( self ):
         Card.__init__( self, 'moat', '(mo)at', 2, 0, True, 0, "+2 cards.  When another player plays an attack card, you reveal this from your hand.  If you do, you are unaffected by that attack." )        
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         turn.cardsToDeal = 2        
 
 class Cellar( Card ):
     def __init__( self ):
         Card.__init__( self, 'cellar', '(ce)llar', 2, 0, True, 0, "+1 action.  Discard any number of cards.  +1 card per card discarded." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
 
         while True:
             print "\nhand (%d): %s" % (player.numHands, player.hand)
@@ -183,7 +183,7 @@ class Village( Card ):
     def __init__( self ):
         Card.__init__( self, 'village', '(v)illage', 3, 0, True, 0, "+1 card.  +2 actions.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.numActions += 2
         turn.cardsToDeal = 1
     
@@ -191,7 +191,7 @@ class Workshop( Card ):
     def __init__( self ):
         Card.__init__( self, 'workshop', '(w)orkshop', 3, 0, True, 0, "Gain a card costing up to 4." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         
         # gain any card costing up to 4
         # if player changes mind about buy, then don't use up this card
@@ -204,7 +204,7 @@ class Militia( Card ):
     def __init__( self ):
         Card.__init__( self, 'militia', '(m)ilitia', 4, 0, True, 0, "+2 spend | Each other player discards down to 3 cards in his hand." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.spendBonus += 2
         turn.attacksInPlay[ 'militia' ] = turn.numPlayers - 1
 
@@ -212,7 +212,7 @@ class Smithy( Card ):
     def __init__( self ):
         Card.__init__( self, 'smithy', '(sm)ithy', 4, 0, True, 0, "+3 cards.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         turn.cardsToDeal = 3
 
         
@@ -220,7 +220,7 @@ class Remodel( Card ):
     def __init__( self ):
         Card.__init__( self, 'remodel', '(r)emodel', 4, 0, True, 0, "Trash a card from your hand.  Gain a card costing up to 2 more than the trashed card." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         
         while True:
             choice = raw_input("Select a card to trash> ")
@@ -249,7 +249,7 @@ class Market( Card ):
     def __init__( self ):
         Card.__init__( self, 'market', '(ma)rket', 5, 0, True, 0, "+1 card  +1 action  +1 buy  +1 spend")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.numActions += 1
         player.numBuys += 1
         player.spendBonus += 1
@@ -260,7 +260,7 @@ class Mine( Card ):
     def __init__( self ):
         Card.__init__( self, 'mine', '(mi)ne', 5, 0, True, 0,"Trash a treasure card from your hand.  Gain a treasure card costing up to 3 more, put it in your hand.  (Basically, copper and silver upgrade to silver and gold, respectively." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
 
         # dont get stuck in endless input loop if player has no valid
         # coins to trash
@@ -304,7 +304,7 @@ class Moneylender( Card ):
     def __init__( self ):
         Card.__init__( self, 'moneylender', '(mon)eylender', 4, 0, True, 0, "Trash a copper from your hand. If you do, +3 spend.")    
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
 
         copperCard = shortcutMap[ "copper" ]
         if not player.hand.contains( copperCard ):
@@ -321,7 +321,7 @@ class Chancellor( Card ):
     def __init__( self ):
         Card.__init__( self, 'chancellor', '(ch)ancellor', 3, 0, True, 0, "+2 spend.  You may immediately put your deck into your discard pile.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.spendBonus += 2
         player.discard.extend( player.deck )
         player.deck = Deck()
@@ -330,7 +330,7 @@ class Festival( Card ):
     def __init__( self ):
         Card.__init__( self, 'festival', '(f)estival', 5, 0, True, 0, "+2 actions.  +1 buy.  +2 spend.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.numActions += 2      
         player.numBuys += 1
         player.spendBonus += 2
@@ -340,7 +340,7 @@ class Laboratory( Card ):
     def __init__( self ):
         Card.__init__( self, 'laboratory', '(l)aboratory', 5, 0, True, 0, "+2 cards.  +1 action.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.numActions += 1
         turn.cardsToDeal = 2
 
@@ -349,7 +349,7 @@ class Feast( Card ):
     def __init__( self ):
         Card.__init__( self, 'feast', '(fe)ast', 4, 0, True, 0, "Trash this card.  Gain a card costing up to 5.")
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
 
         if not buyCard( deckMap, shortcutMap, player, 5, True ):
             player.hand.add( Feast() )
@@ -359,7 +359,7 @@ class Adventurer( Card ):
     def __init__( self ):
         Card.__init__( self, 'adventurer', '(a)dventurer', 6, 0, True, 0, "Reveal cards from your deck until you reveal 2 treasure cards. Put those treasure cards into your hand and discard the other revealed cards." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
 
         print "Playing Adventurer..."
         # if the player somehow doesn't have 2 treasure cards
@@ -376,21 +376,21 @@ class Adventurer( Card ):
                 player.discard = Deck()
                 newCard = player.deck.deal()
             
-            print "Dealt: ", newCard.shortcutName,
+            print "Dealt %s." % (newCard.shortcutName),
             
             if newCard.value:
-                print " added to hand."
+                print " Added to hand."
                 player.hand.add( newCard )
                 treasureCards += 1
             else:
-                print " discarded."
+                print " Discarded."
                 player.discard.add( newCard )
 
 class Bureaucrat( Card ):
     def __init__( self ):
         Card.__init__( self, 'bureaucrat', '(b)ureaucrat', 4, 0, True, 0, "Gain a silver: put it on top of your deck.  Each other player reveals a victory card from their hand and puts it on top of their deck." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         player.deck.push( shortcutMap[ "silver" ] )
         turn.attacksInPlay[ "bureaucrat" ] = turn.numPlayers - 1
 
@@ -398,9 +398,52 @@ class Witch( Card ):
     def __init__( self ):
         Card.__init__( self, 'witch', '(wi)tch', 5, 0, True, 0, "+2 cards.  Each other player takes a curse card." )
 
-    def play( self, player, turn, shortcutMap, deckMap ):
+    def play( self, player, players, turn, shortcutMap, deckMap ):
         turn.cardsToDeal = 2
         turn.attacksInPlay[ "witch" ] = turn.numPlayers - 1
+
+class Spy( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'spy', '(sp)y', 4, 0, True, 0, "+1 card. +1 action.  Each player (including you) reveals the top card from his deck and either discards it or puts it back, your choice." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+        turn.cardsToDeal = 1
+        player.numActions += 1
+
+        # I hate to do this in the card itself, because now it requires
+        # passing in all the other players.  However, it will be faster/
+        # easier to resolve in right now.
+        for other in players:
+            if other.name == player.name:
+                continue
+
+            # first check to see if other has a moat in hand
+            if other.hand.contains( shortcutMap["moat"] ):
+                print "%s deflects the attack with a moat." % other.name
+                continue
+            
+            try:
+                topCard = other.deck.deal()
+            except ValueError:
+                other.deck.extend( other.discard )
+                other.deck.shuffle()
+                other.discard = Deck()
+                topCard = other.deck.deal()
+            
+            print "\nThe top card on %s's deck is %s" % ( other.name, topCard.shortcutName )
+
+            while True:
+                fate = raw_input( "(d) discard it or (p) put it back? >" )
+                if fate in [ 'd', 'p' ]:
+                    break
+
+            if fate == "d":
+                print "Discarded %s's %s" % ( other.name, topCard.shortcutName )
+                other.discard.add( topCard )
+            else:
+                print "Put %s's %s back on the deck." % ( other.name, topCard.shortcutName )
+                other.deck.push( topCard )
+        
 
 class Curse( Card ):
     def __init__( self ):
@@ -468,6 +511,7 @@ class Table():
         self.pileEstate = Deck()
         self.pileDuchy = Deck()
         self.pileProvince = Deck()
+        self.pileCurse = Deck()
         
         self.pileCopper = Deck()
         self.pileSilver = Deck()
@@ -489,7 +533,8 @@ class Table():
                          "gold" : self.pileGold,
                          "estate" : self.pileEstate,
                          "duchy" : self.pileDuchy,
-                         "province" : self.pileProvince }
+                         "province" : self.pileProvince,
+                         "curse" : self.pileCurse }
 
         if self.__numPlayers <= 2:
             cardsInDeck = 8
@@ -509,7 +554,8 @@ class Table():
         for i in range(40):    
             self.pileSilver.add( Silver() )
 
-        for i in range(30):    
+        for i in range(30):
+            self.pileCurse.add( Curse() )
             self.pileGold.add( Gold() )
 
 
@@ -595,7 +641,9 @@ def setUpShortcuts():
         'cu': Curse(),
         'curse': Curse(),
         'wi': Witch(),
-        'witch': Witch()
+        'witch': Witch(),
+        'sp': Spy(),
+        'spy': Spy()
         }
 
     return shortcutMap
@@ -735,12 +783,16 @@ def main():
 
     # to change the cards in play, must manually edit this list
     # for now
+    
     #startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
     #                  Militia(), Smithy(), Remodel(), Market(), Mine() ]
 
-    startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
-                      Bureaucrat(), Remodel(), Witch(), Market(), Adventurer() ]    
+    #longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
+    #               Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]    
 
+    startingCards = [ Moat(), Cellar(), Village(), Remodel(), Moneylender(),
+                      Bureaucrat(), Spy(), Festival(), Witch(), Adventurer() ]
+    
     gameTable.setKingdomCards( startingCards )
 
     # set up shortcuts
@@ -762,6 +814,18 @@ def main():
             players[i].deck.add( Estate() )
 
         players[i].deck.shuffle()
+
+        # deal me a new one pardner
+        for j in range(5):
+            try:
+                card = players[i].deck.deal()
+            except ValueError:
+                players[i].deck.extend( players[i].discard )
+                players[i].deck.shuffle()
+                players[i].discard = Deck()
+                card = players[i].deck.deal()
+            players[i].hand.add( card )
+
         
     isNewHand = True
     vp = 0
@@ -806,11 +870,21 @@ def main():
             gameOver = True
 
         if gameOver:
-            print "********** GAME OVER **********"
-            for i in range( turn.numPlayers ):
-                playerVP = players[i].hand.getVP() + players[i].deck.getVP() + players[i].inPlay.getVP() + players[i].discard.getVP()
-                print "Player: %d *%s* VP: %d" % ( i + 1, players[i].name, playerVP )
             print "*******************************"
+            print "********** GAME OVER **********"
+            
+            for i in range( turn.numPlayers ):
+                players[i].deck.extend( players[i].inPlay )
+                players[i].deck.extend( players[i].hand )
+                players[i].deck.extend( players[i].discard )                
+                print "Player: %d *%s* VP: %d" % ( i + 1, players[i].name, players[i].deck.getVP())
+            print "*******************************"
+            print "*******************************"
+            
+        
+            for i in range( turn.numPlayers ):            
+                print "Player %s %s" % ( players[i].name, players[i].deck )
+                print "\n"
             break
 
         taskList = [ '+', 'x', 'h', 'c' ]
@@ -823,17 +897,6 @@ def main():
             player.numBuys = 1
             player.numActions = 0
             player.spendBonus = 0
-
-            for i in range(5):
-                try:
-                    card = player.deck.deal()
-                except ValueError:
-                    player.deck.extend( player.discard )
-                    player.deck.shuffle()
-                    player.discard = Deck()
-                    card = player.deck.deal()
-                    
-                player.hand.add( card )
 
             # determine actions for this hand
             # do you have any single action card in hand?
@@ -933,8 +996,15 @@ def main():
                     if player.hand.contains( shortcutMap["moat"] ):
                         print "You deflect the attack with the moat.\n"
                     else:
-                        print "You take a curse.\n"
-                        player.discard.add( Curse() )
+                        newCurse = None
+                        try:
+                            newCurse = gameTable.deckMap[ "curse" ].deal()
+                        except:
+                            print "No curse cards remaining."
+
+                        if newCurse:
+                            print "You take a curse.\n"
+                            player.discard.add( newCurse )
                         
         # show available menu options to player
         if player.numActions > 0:
@@ -1009,7 +1079,7 @@ def main():
                     player.inPlay.add( cardInPlay )
 
                     # resolve the card
-                    cardInPlay.play( player, turn, shortcutMap, gameTable.deckMap )
+                    cardInPlay.play( player, players, turn, shortcutMap, gameTable.deckMap )
 
                     # decrement actions remaining
                     player.numActions -= 1
@@ -1044,6 +1114,7 @@ def main():
             player.inPlay = Deck()
             isNewHand = True
 
+
         if task == 'h':
             print "Sorry, I changed my mind."
 
@@ -1057,6 +1128,19 @@ def main():
         if isNewHand:
             player.discard.extend( player.hand )
             player.hand = Deck()
+
+            # deal me another
+            for i in range(5):
+                try:
+                    card = player.deck.deal()
+                except ValueError:
+                    player.deck.extend( player.discard )
+                    player.deck.shuffle()
+                    player.discard = Deck()
+                    card = player.deck.deal()
+                player.hand.add( card )
+
+                    
 
             # next players turn now
             p += 1
