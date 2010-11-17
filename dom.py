@@ -3,9 +3,6 @@
 
 # to do
 
-# I'm not sure the Thief card is quite right.  Should it discard any
-# untouched cards each time and is it doing that?
-
 # test what happens if you try to use a card name that is not actually in any
 # of the decks (because it will be in the shortcut map )
 
@@ -575,6 +572,37 @@ class Thief( Card ):
                     player.discard.add( card )
         else:
             print "There is nothing to steal!"
+
+class Library( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'library', '(li)brary', 5, 0, True, 0, "Draw until you have 7 cards in hand.  You may discard any actions cards as you draw them." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+
+        while len( player.hand ) < 7:
+            try:
+                topCard = player.deck.deal()
+            except ValueError:
+                player.deck.extend( player.discard )
+                player.deck.shuffle()
+                player.discard = Deck()
+                topCard = player.deck.deal()
+            if topCard.action:
+                while True:
+                    print "Drew: %s." % topCard
+                    keepIt = raw_input( "(d)iscard or (k)eep >" )
+                    if keepIt in [ "d", "k" ]:
+                        break
+                if not keepIt:
+                    print "Discarded %s." % topCard
+                    player.discard.add( topCard )
+                else:
+                    print "Keeping %s." % topCard
+                    player.hand.add( topCard )
+            else:
+                print "Keeping %s." % topCard
+                player.hand.add( topCard )
+
             
 
 class Curse( Card ):
@@ -777,7 +805,10 @@ def setUpShortcuts():
         'sp': Spy(),
         'spy': Spy(),
         't': Thief(),
-        'thief': Thief()
+        'thief': Thief(),
+        'li': Library(),
+        'library': Library(),
+        
         }
 
     return shortcutMap
@@ -924,8 +955,8 @@ def main():
     longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
                    Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]
 
-    basicThief = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                   Thief(), Smithy(), Remodel(), Market(), Mine() ]
+    basicThief = [ Moat(), Cellar(), Village(), Woodcutter(), Moneylender(),
+                   Thief(), Remodel(), Library(), Market(), Mine() ]
     
     startingCards = basicThief
     
