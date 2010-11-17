@@ -3,6 +3,9 @@
 
 # to do
 
+# I'm not sure the Thief card is quite right.  Should it discard any
+# untouched cards each time and is it doing that?
+
 # test what happens if you try to use a card name that is not actually in any
 # of the decks (because it will be in the shortcut map )
 
@@ -443,7 +446,136 @@ class Spy( Card ):
             else:
                 print "Put %s's %s back on the deck." % ( other.name, topCard.shortcutName )
                 other.deck.push( topCard )
-        
+
+class Thief( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'thief', '(t)hief', 4, 0, True, 0, "Each player reveals the top 2 cards from his deck. If they reveal any Treasure cards, they trash 1 that you choose.  You may gain any or all of these trashed cards.  They discard the other revealed cards." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+
+        # this is a fucking nightmare
+        localTrash = []
+        for other in players:
+
+            if other.name == player.name:
+                continue
+
+            # first check to see if other has a moat in hand
+            if other.hand.contains( shortcutMap["moat"] ):
+                print "%s deflects the attack with a moat." % other.name
+                continue
+
+            treasure = 0 # using len( reveal ) would be safer
+            reveal = []
+            for i in range(2):
+                try:
+                    topCard = other.deck.deal()
+                except ValueError:
+                    other.deck.extend( other.discard )
+                    other.deck.shuffle()
+                    other.discard = Deck()
+                    topCard = other.deck.deal()
+
+                if topCard.value:
+                    treasure += 1
+                reveal.append( topCard )
+
+            print "\nThe next 2 cards from %s's deck are %s, %s." % ( other.name, reveal[0].shortcutName, reveal[1].shortcutName )
+
+            if treasure == 1:
+                
+                print "You may trash the treasure card if you choose."
+                if reveal[0].value:
+                    treasureCard = reveal[0]
+                    otherCard = reveal[1]
+                else:
+                    treasureCard = reveal[1]
+                    otherCard = reveal[0]
+                    
+                while True:
+                    trashIt = raw_input( "Trash it (y/n) >" )
+                    if trashIt in [ "y", "n" ]:
+                        break
+                    
+                if trashIt == "y":
+                    print "Trashed %s." % treasureCard
+                    localTrash.append( treasureCard )
+                else:
+                    print "Discarded %s." % treasureCard
+                    other.discard.add( treasureCard )
+                print "Discarded %s." % otherCard
+                other.discard.add( otherCard )
+                    
+            elif treasure == 2:
+
+                print "You may trash one of the treasure cards."
+                
+                while True:
+                    whichOne = raw_input( "Card name to trash, <enter> to trash nothing> " )
+
+                    # trash nothing
+                    if whichOne == "":
+                        # discard both
+                        for card in reveal:
+                            print "Discarded: " % card.shortcutName
+                            other.discard.add( card )
+                        break
+
+                    # else, argh, get the shortcut
+                    try:
+                        theCard = shortcutMap[ whichOne ]
+                    except:
+                        print "Huh?"
+                        continue
+
+                    # did we find the card they mean?
+                    foundIt = False
+                    for card in reveal:
+                        if card == theCard:
+                            foundIt = True
+                    
+                    if not foundIt:
+                        print "That's not one of the choices."
+                        continue
+
+                    # we know there are 2 cards in reveal list, right?
+                    # now resolve their choice
+                    if reveal[0] == theCard:
+                        print "Trashed %s." % reveal[0].shortcutName
+                        print "Discarded %s." % reveal[1].shortcutName
+                        localTrash.append( reveal[0] )
+                        other.discard.add( reveal[1] )
+                    else:
+                        print "Trashed %s." % reveal[1].shortcutName
+                        print "Discarded %s." % reveal[0].shortcutName                        
+                        localTrash.append( reveal[1] )
+                        other.discard.add( reveal[0] )
+                    break
+                
+            else:
+                print "No treasure here."
+                # put 'em in the discard pile
+                for card in reveal:
+                    print "Discarded %s." % card.shortcutName                        
+                    other.discard.add( card )
+                continue
+
+
+        # now go through the trash you thief!
+        if len( localTrash ):
+            print "\nSteal any trashed cards you wish..."
+            for card in localTrash:
+                print "\n%s: " % card.shortcutName,
+                while True:
+                    stealIt = raw_input("(t) trash it  or  (s) steal it >")
+                    if stealIt in [ "t", "s" ]:
+                        break
+                if stealIt == "s":
+                    print "%s stole a %s!" % ( player.name, card.shortcutName )
+                    player.discard.add( card )
+        else:
+            print "There is nothing to steal!"
+            
 
 class Curse( Card ):
     def __init__( self ):
@@ -643,7 +775,9 @@ def setUpShortcuts():
         'wi': Witch(),
         'witch': Witch(),
         'sp': Spy(),
-        'spy': Spy()
+        'spy': Spy(),
+        't': Thief(),
+        'thief': Thief()
         }
 
     return shortcutMap
@@ -784,14 +918,16 @@ def main():
     # to change the cards in play, must manually edit this list
     # for now
     
-    #startingCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-    #                  Militia(), Smithy(), Remodel(), Market(), Mine() ]
+    basicCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
+                   Militia(), Smithy(), Remodel(), Market(), Mine() ]
 
-    #longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
-    #               Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]    
+    longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
+                   Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]
 
-    startingCards = [ Moat(), Cellar(), Village(), Remodel(), Moneylender(),
-                      Bureaucrat(), Spy(), Festival(), Witch(), Adventurer() ]
+    basicThief = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
+                   Thief(), Smithy(), Remodel(), Market(), Mine() ]
+    
+    startingCards = basicThief
     
     gameTable.setKingdomCards( startingCards )
 
@@ -880,11 +1016,18 @@ def main():
                 print "Player: %d *%s* VP: %d" % ( i + 1, players[i].name, players[i].deck.getVP())
             print "*******************************"
             print "*******************************"
-            
-        
-            for i in range( turn.numPlayers ):            
-                print "Player %s %s" % ( players[i].name, players[i].deck )
-                print "\n"
+
+            for i in range( turn.numPlayers ):
+                # lets count all the cards in each players hand
+                counts = {}
+                for card in players[i].deck:
+                    if counts.has_key( card.name ):
+                        counts[ card.name ] += 1
+                    else:
+                        counts[ card.name ] = 1
+                print "Player %s" % ( players[i].name)
+                for (cardName, count) in counts.items():
+                    print "     %s %d" % ( cardName, count )
             break
 
         taskList = [ '+', 'x', 'h', 'c' ]
