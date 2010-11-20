@@ -3,16 +3,29 @@
 
 # to do
 
-# test what happens if you try to use a card name that is not actually in any
-# of the decks (because it will be in the shortcut map )
+# Throne Room won't stack currently
+# Throne Room won't work right either, because rather than playing
+# a card twice in a single pass through the action loop
+# you need to go through the loop twice to get all the bonus cards, etc.
+# (.ie village card)
+# Another way to implement throne room might be save the name of
+# a throne room action card in turn
+# so you have to literally play an action card twice a -> card name
+# and your second action has to match the throne room action
+# if you play throne room throne room, you can resolve them one at a time
+
+
+# what about a stack-based solution for throne room
+# you play a throne room, push it on the stack
+
+# next action, if it's another throne room, push it on the stack
+# otherwise, pop the stack and resolve the action card twice
+
 
 # still quite a bit of ugliness with this design
-# getting/putting back cards for the buyCard() is retarded
+# getting/putting back cards for buyCard() is retarded
 
 # create debug mode
-
-# the decks also need to behave like a queue, since some cards are now going to be
-# put on top of the deck.  So shuffling will actually have to randomize the list
 
 # card help
 # card help could also be used during play to display what is happening
@@ -89,7 +102,10 @@ class Deck:
     def getVP( self ):
         vp = 0
         for card in self.__cards:
-            vp += card.vp
+            if card.name == 'gardens':
+                vp += ( card.vp * ( self.__len__ / 10 ))
+            else:
+                vp += card.vp
         return vp
 
     def getNumProvinces( self ):
@@ -514,7 +530,7 @@ class Thief( Card ):
                     if whichOne == "":
                         # discard both
                         for card in reveal:
-                            print "Discarded: " % card.shortcutName
+                            print "Discarded: %s" % card.shortcutName
                             other.discard.add( card )
                         break
 
@@ -593,7 +609,7 @@ class Library( Card ):
                     keepIt = raw_input( "(d)iscard or (k)eep >" )
                     if keepIt in [ "d", "k" ]:
                         break
-                if not keepIt:
+                if keepIt == "d":
                     print "Discarded %s." % topCard
                     player.discard.add( topCard )
                 else:
@@ -603,7 +619,54 @@ class Library( Card ):
                 print "Keeping %s." % topCard
                 player.hand.add( topCard )
 
+class CouncilRoom( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'council room', '(co)uncil room', 5, 0, True, 0, "+4 cards.  +1 buy.  Each other player draws a card." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+        turn.cardsToDeal = 4
+        player.numBuys += 1
+
+        turn.attacksInPlay[ "council room" ] = turn.numPlayers - 1        
+
+
+class Chapel( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'chapel', '(cha)pel', 2, 0, True, 0, "Trash up to 4 cards." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+
+        cardsTrashed = 0
+        while True:
+
+            if cardsTrashed >= 4:
+                break
             
+            choice = raw_input("Select a card to trash (q to quit)> ")
+
+            if choice == "q":
+                break
+            
+            try:
+                trashedCard = shortcutMap[ choice ]
+            except:
+                print "Huh?"
+                continue
+            
+            if player.hand.contains( trashedCard ):
+                cardsTrashed += 1
+                player.hand.remove( trashedCard )
+            else:
+                print "You don't have that card in hand."
+
+
+class ThroneRoom( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'throne room', '(th)rone room', 4, 0, True, 0, "Choose an action card in your hand.  Play it twice." )
+
+    def play( self, player, players, turn, shortcutMap, deckMap ):
+        turn.numThroneRooms += 1
+        player.numActions += 1
 
 class Curse( Card ):
     def __init__( self ):
@@ -613,10 +676,15 @@ class Estate( Card ):
     def __init__( self ):
         Card.__init__( self, 'estate', '(e)state', 2, 0, False, 1, "Worth 1 VP.")
 
+class Gardens( Card ):
+    def __init__( self ):
+        Card.__init__( self, 'estate', '(e)state', 4, 0, False, 1, "Worth 1 VP per 10 cards in deck.")    
+    
 class Duchy( Card ):
     def __init__( self ):
-        Card.__init__( self, 'duchy', '(d)uchy', 5, 0, False, 3, "Worth 3 VP.")        
+        Card.__init__( self, 'duchy', '(d)uchy', 5, 0, False, 3, "Worth 3 VP.")
 
+        
 class Province( Card ):
     def __init__( self ):
         Card.__init__( self, 'province', '(p)rovince', 8, 0, False, 6, "Worth 6 VP.")
@@ -652,6 +720,8 @@ class TurnState():
         self.cardsToDeal = 0
         self.attacksInPlay = {}  # { 'card name' : turns }
         self.numPlayers = numPlayers
+        self.numThroneRooms = 0
+        self.previousActionCard = None # throne room action card
 
 
 class Table():
@@ -752,63 +822,70 @@ class Table():
 def setUpShortcuts():
 
     shortcutMap = {
-        'p': Province(),
-        'province': Province(),
-        'e': Estate(),
-        'estate': Estate(),        
-        'd': Duchy(),
-        'duchy': Duchy(),        
-        'mo': Moat(),
-        'moat': Moat(),        
-        'ce': Cellar(),
-        'cellar': Cellar(),        
-        'v': Village(),
-        'village': Village(),        
-        'wo': Woodcutter(),
-        'woodcutter': Woodcutter(),        
-        'w': Workshop(),
-        'workshop': Workshop(),        
-        'm': Militia(),
-        'militia': Militia(),        
-        'sm': Smithy(),
-        'smithy': Smithy(),        
-        'r': Remodel(),
-        'remodel': Remodel(),        
-        'ma': Market(),
-        'market': Market(),        
-        'mi': Mine(),
-        'mine': Mine(),        
-        'g': Gold(),
-        'gold': Gold(),        
-        's': Silver(),
-        'silver': Silver(),        
-        'c': Copper(),
-        'copper': Copper(),        
-        'mon': Moneylender(),
-        'moneylender': Moneylender(),        
-        'ch': Chancellor(),
-        'chancellor': Chancellor(),        
-        'f': Festival(),
-        'festival': Festival(),        
-        'l': Laboratory(),
-        'laboratory': Laboratory(),        
-        'fe': Feast(),
-        'feast': Feast(),
         'a': Adventurer(),
         'adventurer': Adventurer(),
         'b': Bureaucrat(),
         'bureaucrat': Bureaucrat(),
+        'c': Copper(),
+        'copper': Copper(),
+        'ce': Cellar(),
+        'cellar': Cellar(),
+        'ch': Chancellor(),
+        'chancellor': Chancellor(),
+        'cha': Chapel(),
+        'chapel': Chapel(),
+        'co': CouncilRoom(),
+        'council room': CouncilRoom(),
         'cu': Curse(),
         'curse': Curse(),
-        'wi': Witch(),
-        'witch': Witch(),
+        'd': Duchy(),
+        'duchy': Duchy(),
+        'e': Estate(),
+        'estate': Estate(),
+        'f': Festival(),
+        'festival': Festival(),                
+        'fe': Feast(),
+        'feast': Feast(),
+        'g': Gold(),
+        'gold': Gold(),
+        'ga': Gardens(),
+        'gardens': Gardens(),
+        'l': Laboratory(),
+        'laboratory': Laboratory(),
+        'li': Library(),
+        'library': Library(),
+        'm': Militia(),
+        'militia': Militia(),
+        'ma': Market(),
+        'market': Market(),
+        'mi': Mine(),
+        'mine': Mine(),        
+        'mo': Moat(),
+        'moat': Moat(),                
+        'mon': Moneylender(),
+        'moneylender': Moneylender(),        
+        'p': Province(),
+        'province': Province(),
+        'r': Remodel(),
+        'remodel': Remodel(),
+        's': Silver(),
+        'silver': Silver(),
+        'sm': Smithy(),
+        'smithy': Smithy(),                
         'sp': Spy(),
         'spy': Spy(),
         't': Thief(),
         'thief': Thief(),
-        'li': Library(),
-        'library': Library(),
-        
+        'th': ThroneRoom(),
+        'throne room': ThroneRoom(),
+        'v': Village(),
+        'village': Village(),        
+        'w': Workshop(),
+        'workshop': Workshop(),        
+        'wi': Witch(),
+        'witch': Witch(),
+        'wo': Woodcutter(),
+        'woodcutter': Woodcutter(),        
         }
 
     return shortcutMap
@@ -867,11 +944,14 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
             break
         except:
             print "\nThat card name is not valid."            
-            
-    if deckMap[ card.name ].empty():
-        print "That deck is empty."
-        return False
 
+    try:
+        if deckMap[ card.name ].empty():
+            print "That deck is empty."
+            return False
+    except KeyError:
+        print "That card is not available in this game."
+        return False
 
     # get the card
     card = deckMap[ card.name ].deal()
@@ -955,10 +1035,13 @@ def main():
     longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
                    Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]
 
-    basicThief = [ Moat(), Cellar(), Village(), Woodcutter(), Moneylender(),
-                   Thief(), Remodel(), Library(), Market(), Mine() ]
+    basicWitch = [ Moat(), Cellar(), Village(), Woodcutter(), Thief(),
+                   Witch(), Smithy(), Remodel(), Market(), Mine() ]
+
+    testCards = [ Moat(), Chapel(), Village(), Woodcutter(), Workshop(),
+                  ThroneRoom(), Gardens(), Remodel(), CouncilRoom(), Mine() ]
     
-    startingCards = basicThief
+    startingCards = testCards
     
     gameTable.setKingdomCards( startingCards )
 
@@ -1179,6 +1262,24 @@ def main():
                         if newCurse:
                             print "You take a curse.\n"
                             player.discard.add( newCurse )
+
+
+                if cardName == "council room":
+
+                    print "Council room was played."
+                    print "Draw another card."
+
+                    turn.attacksInPlay[ "council room" ] -= 1
+
+                    try:
+                        newCard = player.deck.deal()
+                    except ValueError:
+                        player.deck.extend( player.discard )
+                        player.deck.shuffle()
+                        player.discard = Deck()
+                        newCard = player.deck.deal()
+
+                    player.hand.add( newCard )
                         
         # show available menu options to player
         if player.numActions > 0:
@@ -1220,7 +1321,6 @@ def main():
             while True:
 
                 card = raw_input("\nCard to play> ")
-
                 # first see if they entered a shortcut
                 try:
                     card = shortcutMap[ card ]
@@ -1228,10 +1328,10 @@ def main():
                 except:
                     print "Huh?"
                     continue
-
+                 
             if not player.hand.contains( card ):
                 print "You don't have that card in hand."
-
+                     
             else:
 
                 # reset turn.cardsToDeal every action
@@ -1286,6 +1386,7 @@ def main():
                 
             player.discard.extend( player.inPlay )
             player.inPlay = Deck()
+            turn.throneRoom = 0
             isNewHand = True
 
 
