@@ -3,24 +3,7 @@
 
 # to do
 
-# Throne Room won't stack currently
-# Throne Room won't work right either, because rather than playing
-# a card twice in a single pass through the action loop
-# you need to go through the loop twice to get all the bonus cards, etc.
-# (.ie village card)
-# Another way to implement throne room might be save the name of
-# a throne room action card in turn
-# so you have to literally play an action card twice a -> card name
-# and your second action has to match the throne room action
-# if you play throne room throne room, you can resolve them one at a time
-
-
-# what about a stack-based solution for throne room
-# you play a throne room, push it on the stack
-
-# next action, if it's another throne room, push it on the stack
-# otherwise, pop the stack and resolve the action card twice
-
+# Throne Room is still totally hacked/broken
 
 # still quite a bit of ugliness with this design
 # getting/putting back cards for buyCard() is retarded
@@ -454,10 +437,10 @@ class Spy( Card ):
                     break
 
             if fate == "d":
-                print "Discarded %s's %s" % ( other.name, topCard.shortcutName )
+                print "\nDiscarded %s's %s" % ( other.name, topCard.shortcutName )
                 other.discard.add( topCard )
             else:
-                print "Put %s's %s back on the deck." % ( other.name, topCard.shortcutName )
+                print "\nPut %s's %s back on the deck." % ( other.name, topCard.shortcutName )
                 other.deck.push( topCard )
 
 class Thief( Card ):
@@ -665,8 +648,10 @@ class ThroneRoom( Card ):
         Card.__init__( self, 'throne room', '(th)rone room', 4, 0, True, 0, "Choose an action card in your hand.  Play it twice." )
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
+        print "Throne Room, play your next action card twice."
         turn.numThroneRooms += 1
         player.numActions += 1
+        turn.chainingThroneRooms = True
 
 class Curse( Card ):
     def __init__( self ):
@@ -678,7 +663,7 @@ class Estate( Card ):
 
 class Gardens( Card ):
     def __init__( self ):
-        Card.__init__( self, 'estate', '(e)state', 4, 0, False, 1, "Worth 1 VP per 10 cards in deck.")    
+        Card.__init__( self, 'gardens', '(ga)rdens', 4, 0, False, 1, "Worth 1 VP per 10 cards in deck.")    
     
 class Duchy( Card ):
     def __init__( self ):
@@ -720,8 +705,8 @@ class TurnState():
         self.cardsToDeal = 0
         self.attacksInPlay = {}  # { 'card name' : turns }
         self.numPlayers = numPlayers
-        self.numThroneRooms = 0
-        self.previousActionCard = None # throne room action card
+        self.numThroneRooms = 0  # num consecutive throne rooms in play
+        self.chainingThroneRooms = False # so we know when the chaining of tr's is finished
 
 
 class Table():
@@ -776,7 +761,6 @@ class Table():
             self.pileEstate.add( Estate() )
             self.pileDuchy.add( Duchy() )
             self.pileProvince.add( Province() )
-
 
         for i in range(60):    
             self.pileCopper.add( Copper() )
@@ -1038,7 +1022,7 @@ def main():
     basicWitch = [ Moat(), Cellar(), Village(), Woodcutter(), Thief(),
                    Witch(), Smithy(), Remodel(), Market(), Mine() ]
 
-    testCards = [ Moat(), Chapel(), Village(), Woodcutter(), Workshop(),
+    testCards = [ Moat(), Chapel(), Spy(), Woodcutter(), Workshop(),
                   ThroneRoom(), Gardens(), Remodel(), CouncilRoom(), Mine() ]
     
     startingCards = testCards
@@ -1220,7 +1204,9 @@ def main():
                                 numDiscarded += 1
                                 player.hand.remove( discardCard )
                                 player.discard.add( discardCard )
-
+                                
+                        print "Hand: %s" % (player.hand)
+                        
                 if cardName == "bureaucrat":
 
                     print "A bureaucrat card is in play."
@@ -1244,6 +1230,8 @@ def main():
                         else:
                             print "You have no VP cards in your hand.\n"
 
+                        print "Hand: %s" % (player.hand)
+                        
                 if cardName == "witch":
 
                     print "A witch is in play!"
@@ -1280,6 +1268,7 @@ def main():
                         newCard = player.deck.deal()
 
                     player.hand.add( newCard )
+                    print "Hand: %s" % (player.hand)
                         
         # show available menu options to player
         if player.numActions > 0:
@@ -1346,6 +1335,10 @@ def main():
 
                 else:
 
+                    # toggle off the throne room chain
+                    if cardInPlay != ThroneRoom():
+                        turn.chainingThroneRooms = False
+
                     # take the card from the hand
                     player.hand.remove( cardInPlay )
 
@@ -1354,7 +1347,6 @@ def main():
 
                     # resolve the card
                     cardInPlay.play( player, players, turn, shortcutMap, gameTable.deckMap )
-
                     # decrement actions remaining
                     player.numActions -= 1
 
@@ -1375,6 +1367,30 @@ def main():
 
                         player.hand.add( newCard )
 
+                    # resolve double play for Throne Room
+                    # we toggle the bool off when the chain of
+                    # throne rooms is finished being played
+                    if not turn.chainingThroneRooms and turn.numThroneRooms > 0:
+                        turn.cardsToDeal = 0
+                        turn.numThroneRooms -= 1
+
+                        # do it again
+                        # second play is "free" so shouldn't need to
+                        # increment or decrement numActions for this one
+                        print "Throne Room active, re-playing %s" % cardInPlay.shortcutName
+                        cardInPlay.play( player, players, turn, shortcutMap, gameTable.deckMap )
+                        
+                        # ugh copy-paste cards to deal for now...
+                        for i in range( turn.cardsToDeal ):
+                            try:
+                                newCard = player.deck.deal()
+                            except ValueError:
+                                player.deck.extend( player.discard )
+                                player.deck.shuffle()
+                                player.discard = Deck()
+                                newCard = player.deck.deal()
+
+                            player.hand.add( newCard )                        
 
         # *******************************************************
             
@@ -1414,8 +1430,6 @@ def main():
                     player.discard = Deck()
                     card = player.deck.deal()
                 player.hand.add( card )
-
-                    
 
             # next players turn now
             p += 1
