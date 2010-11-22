@@ -3,6 +3,10 @@
 
 # to do
 
+# if multiple witches are played, are multiple curses doled out?
+
+# have I tested multiple players, 3-4 player game, where multiple players play the same attack, does it work correctly?
+
 # still quite a bit of ugliness with this design
 # getting/putting back cards for buyCard() is retarded
 
@@ -155,14 +159,16 @@ class Cellar( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
 
+        print "Playing Cellar, +1 action."
+        
+        player.numActions += 1
+
         while True:
             print "\nhand (%d): %s" % (player.numHands, player.hand)
             discardCard = raw_input("Card name to discard (q to quit)> ")
 
             if discardCard == 'q':
                 break
-
-            player.numActions += 1
 
             try:
                 cardToRemove = shortcutMap[ discardCard ]
@@ -329,6 +335,7 @@ class Festival( Card ):
         Card.__init__( self, 'festival', '(f)estival', 5, 0, True, 0, "+2 actions.  +1 buy.  +2 spend.")
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
+        print "Playing Festival, +2 actions, +1 buy, +2 spend."
         player.numActions += 2      
         player.numBuys += 1
         player.spendBonus += 2
@@ -359,7 +366,7 @@ class Adventurer( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
 
-        print "Playing Adventurer...\n"
+        print "Playing Adventurer.\n"
         # if the player somehow doesn't have 2 treasure cards
         # in their deck (unlikely), prevent an endless loop?
         treasureCards = 0
@@ -398,7 +405,7 @@ class Witch( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
 
-        print "\nPlayed witch,  +2 cards."
+        print "\nPlaying witch,  +2 cards."
         turn.cardsToDeal = 2
         turn.attacksInPlay[ "witch" ] = turn.numPlayers - 1
 
@@ -407,6 +414,8 @@ class Spy( Card ):
         Card.__init__( self, 'spy', '(sp)y', 4, 0, True, 0, "+1 card. +1 action.  Each player (including you) reveals the top card from his deck and either discards it or puts it back, your choice." )
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
+        
+        print "Playing Spy, +1 card, +1 action."
         turn.cardsToDeal = 1
         player.numActions += 1
 
@@ -699,6 +708,18 @@ class Player:
         self.numActions = 0
         self.numBuys = 0
         self.AI = False
+
+    def dealCards( self, numCards ):
+        
+        for i in range( numCards ):
+            try:
+                card = self.deck.deal()
+            except ValueError:
+                self.deck.extend( self.discard )
+                self.deck.shuffle()
+                self.discard = Deck()
+                card = self.deck.deal()
+            self.hand.add( card )
 
 
 class TurnState():
@@ -1026,6 +1047,8 @@ def main():
     spendyCards = [ Moat(), Cellar(), Witch(), Laboratory(), Moneylender(),
                     Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
 
+    # this arrangement seems to lead to lots of "dead hands" when you don't
+    # quickly thin out your cards, fun but can be a long game
     funCards = [ Moat(), Cellar(), Witch(), Woodcutter(), Moneylender(),
                  Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
     
@@ -1043,7 +1066,7 @@ def main():
         name = raw_input("Enter your name> ")
         players.append( Player( name ) )
 
-    # deal the hand
+    # set up the player's deck
     for i in range(numPlayers):
         for j in range(7):
             players[i].deck.add( Copper() )
@@ -1054,16 +1077,7 @@ def main():
         players[i].deck.shuffle()
 
         # deal me a new one pardner
-        for j in range(5):
-            try:
-                card = players[i].deck.deal()
-            except ValueError:
-                players[i].deck.extend( players[i].discard )
-                players[i].deck.shuffle()
-                players[i].discard = Deck()
-                card = players[i].deck.deal()
-            players[i].hand.add( card )
-
+        players[i].dealCards(5)
         
     isNewHand = True
     vp = 0
@@ -1095,7 +1109,7 @@ def main():
         numEmptyDecks = 0
         emptyDeckNames = []
         for ( deckName, deck ) in gameTable.deckMap.items():
-            if deckName in [ 'estate', 'duchy', 'province', 'copper', 'silver', 'gold' ]:
+            if deckName in [ 'estate', 'duchy', 'province', 'copper', 'silver', 'gold', 'curse' ]:
                 continue
             if deck.empty():
                 numEmptyDecks += 1
@@ -1263,15 +1277,8 @@ def main():
 
                     turn.attacksInPlay[ "council room" ] -= 1
 
-                    try:
-                        newCard = player.deck.deal()
-                    except ValueError:
-                        player.deck.extend( player.discard )
-                        player.deck.shuffle()
-                        player.discard = Deck()
-                        newCard = player.deck.deal()
+                    player.dealCards(1)
 
-                    player.hand.add( newCard )
                     print "Hand: %s" % (player.hand)
                         
         # show available menu options to player
@@ -1360,16 +1367,7 @@ def main():
                             taskList.remove( 'a' )
 
                     # put new cards into hand
-                    for i in range( turn.cardsToDeal ):
-                        try:
-                            newCard = player.deck.deal()
-                        except ValueError:
-                            player.deck.extend( player.discard )
-                            player.deck.shuffle()
-                            player.discard = Deck()
-                            newCard = player.deck.deal()
-
-                        player.hand.add( newCard )
+                    player.dealCards( turn.cardsToDeal )
 
                     # resolve double play for Throne Room
                     # we toggle the bool off when the chain of
@@ -1384,17 +1382,7 @@ def main():
                         print "Throne Room active, re-playing %s" % cardInPlay.shortcutName
                         cardInPlay.play( player, players, turn, shortcutMap, gameTable.deckMap )
                         
-                        # ugh copy-paste cards to deal for now...
-                        for i in range( turn.cardsToDeal ):
-                            try:
-                                newCard = player.deck.deal()
-                            except ValueError:
-                                player.deck.extend( player.discard )
-                                player.deck.shuffle()
-                                player.discard = Deck()
-                                newCard = player.deck.deal()
-
-                            player.hand.add( newCard )                        
+                        player.dealCards( turn.cardsToDeal )
 
         # *******************************************************
             
@@ -1425,15 +1413,7 @@ def main():
             player.hand = Deck()
 
             # deal me another
-            for i in range(5):
-                try:
-                    card = player.deck.deal()
-                except ValueError:
-                    player.deck.extend( player.discard )
-                    player.deck.shuffle()
-                    player.discard = Deck()
-                    card = player.deck.deal()
-                player.hand.add( card )
+            player.dealCards(5)
 
             # next players turn now
             p += 1
