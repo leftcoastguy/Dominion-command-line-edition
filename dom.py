@@ -3,8 +3,6 @@
 
 # to do
 
-# Throne Room is still totally hacked/broken
-
 # still quite a bit of ugliness with this design
 # getting/putting back cards for buyCard() is retarded
 
@@ -86,7 +84,7 @@ class Deck:
         vp = 0
         for card in self.__cards:
             if card.name == 'gardens':
-                vp += ( card.vp * ( self.__len__ / 10 ))
+                vp += ( card.vp * ( self.__len__() / 10 ))
             else:
                 vp += card.vp
         return vp
@@ -307,11 +305,12 @@ class Moneylender( Card ):
 
         copperCard = shortcutMap[ "copper" ]
         if not player.hand.contains( copperCard ):
-            print "You have no copper in hand."
+            print "\nYou have no copper in hand."
             player.hand.add( Moneylender() )
             player.numActions += 1            
             return
 
+        print "\nPlayed moneylender, +3 to spend."
         player.hand.remove( copperCard )
         player.spendBonus += 3
 
@@ -360,7 +359,7 @@ class Adventurer( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
 
-        print "Playing Adventurer..."
+        print "Playing Adventurer...\n"
         # if the player somehow doesn't have 2 treasure cards
         # in their deck (unlikely), prevent an endless loop?
         treasureCards = 0
@@ -398,6 +397,8 @@ class Witch( Card ):
         Card.__init__( self, 'witch', '(wi)tch', 5, 0, True, 0, "+2 cards.  Each other player takes a curse card." )
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
+
+        print "\nPlayed witch,  +2 cards."
         turn.cardsToDeal = 2
         turn.attacksInPlay[ "witch" ] = turn.numPlayers - 1
 
@@ -418,7 +419,7 @@ class Spy( Card ):
 
             # first check to see if other has a moat in hand
             if other.hand.contains( shortcutMap["moat"] ):
-                print "%s deflects the attack with a moat." % other.name
+                print "\n%s deflects the attack with a moat." % other.name
                 continue
             
             try:
@@ -458,7 +459,7 @@ class Thief( Card ):
 
             # first check to see if other has a moat in hand
             if other.hand.contains( shortcutMap["moat"] ):
-                print "%s deflects the attack with a moat." % other.name
+                print "\n%s deflects the attack with a moat." % other.name
                 continue
 
             treasure = 0 # using len( reveal ) would be safer
@@ -1022,10 +1023,13 @@ def main():
     basicWitch = [ Moat(), Cellar(), Village(), Woodcutter(), Thief(),
                    Witch(), Smithy(), Remodel(), Market(), Mine() ]
 
-    testCards = [ Moat(), Chapel(), Spy(), Woodcutter(), Workshop(),
-                  ThroneRoom(), Gardens(), Remodel(), CouncilRoom(), Mine() ]
+    spendyCards = [ Moat(), Cellar(), Witch(), Laboratory(), Moneylender(),
+                    Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
+
+    funCards = [ Moat(), Cellar(), Witch(), Woodcutter(), Moneylender(),
+                 Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
     
-    startingCards = testCards
+    startingCards = funCards
     
     gameTable.setKingdomCards( startingCards )
 
@@ -1156,7 +1160,7 @@ def main():
             provinces += player.deck.getNumProvinces()
 
         # next action this hand (or new hand)
-        print "\n%s, your turn.  (%d/%d)" % ( player.name, player.deck.getNumShuffles(), player.numHands )
+        print "\n%s, your turn.  (%d/%d)\n" % ( player.name, player.deck.getNumShuffles(), player.numHands )
         print "Hand: %s" % (player.hand)
         print "Actions: %d  Buys: %d  Spend: $%d\n" % ( player.numActions, player.numBuys, player.spendBonus + player.hand.getCoin() )
 
