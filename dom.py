@@ -223,7 +223,7 @@ class Militia( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
         
-        print "Playing %s, +2 spend.\n"
+        print "Playing %s, +2 spend.\n" % self.name
         player.spendBonus += 2
         turn.attacksInPlay[ "militia" ] = turn.numPlayers - 1
 
@@ -456,7 +456,13 @@ class Spy( Card ):
     def play( self, player, players, turn, shortcutMap, deckMap ):
         
         print "Playing Spy, +1 card, +1 action."
-        turn.cardsToDeal = 1
+
+        # this sort of sucks, can't use the turn.cardToDeal value
+        # here because if we do, they will put back the card that
+        # they are about to deal, rather than dealing and peaking
+        # at their *next* card (and potentially putting that back).
+        player.dealCards(1)
+        
         player.numActions += 1
 
         # I hate to do this in the card itself, because now it requires
@@ -484,7 +490,7 @@ class Spy( Card ):
 
 
             if isPlayer:
-                print "%d, your next card is %s." % ( other.name, topCard.shortcutName )
+                print "\n%s, your next card is %s." % ( other.name, topCard.shortcutName )
             else:
                 print "\nThe top card on %s's deck is %s" % ( other.name, topCard.shortcutName )
 
@@ -1151,11 +1157,12 @@ def main():
                  Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
 
 
-    # cards I haven't played much yet
-    testCards = [ Moat(), Chapel(), Chancellor(), Bureaucrat(), ThroneRoom(),
-                  Feast(), CouncilRoom(), Festival(), Laboratory(), Library() ]
+    # current
+    currentCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
+                     Spy(), Smithy(), Remodel(), Market(), Adventurer() ]    
+
     
-    startingCards = basicCards
+    startingCards = currentCards
     
     gameTable.setKingdomCards( startingCards )
 
