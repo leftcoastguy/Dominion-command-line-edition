@@ -1,20 +1,13 @@
 #!/usr/bin/python
 
-
 # to do
-
-# card name one is missing in Playing %s
 
 # allow (h) help menu from buying a card menu
 
 # buy menu, display how many buys are remaining
 
-# if multiple witches are played, are multiple curses doled out?
-
-# retest Spy, now correctly allows the player themself to keep/discard a card too
-
-# have I tested multiple players, 3-4 player game,
-# where multiple players play the same attack, does it work correctly?
+# need to ensure that no player names are the same or else attacks
+# wont work correctly
 
 # still quite a bit of ugliness with this design
 # getting/putting back cards for buyCard() is retarded
@@ -123,6 +116,10 @@ class Deck:
         self.__currentCard += 1
         return card
 
+class Attack:
+    def __init__( self, cardName, playerName ):
+        self.attackName = cardName
+        self.playerName = playerName
 
 class Card:
     def __init__( self, name, shortcutName, cost, value, action, vp, helpText = "" ):
@@ -176,7 +173,7 @@ class Cellar( Card ):
         player.numActions += 1
 
         while True:
-            print "\nhand (%d): %s" % (player.numHands, player.hand)
+            print "\nhand: %s" % player.hand
             discardCard = raw_input("Card name to discard (q to quit)> ")
 
             if discardCard == "q":
@@ -189,6 +186,7 @@ class Cellar( Card ):
                 continue
                 
             if player.hand.contains( cardToRemove ):
+                print "Discarded %s." % cardToRemove.shortcutName
                 turn.cardsToDeal += 1
                 player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
@@ -225,7 +223,7 @@ class Militia( Card ):
         
         print "Playing %s, +2 spend.\n" % self.name
         player.spendBonus += 2
-        turn.attacksInPlay[ "militia" ] = turn.numPlayers - 1
+        turn.attacksInPlay.append( Attack( self.name, player.name ))
 
 class Smithy( Card ):
     def __init__( self ):
@@ -437,7 +435,7 @@ class Bureaucrat( Card ):
     def play( self, player, players, turn, shortcutMap, deckMap ):
         print "Playing %s. A new %s added to discard pile.\n" % ( self.name, shortcutMap[ "silver" ].shortcutName)
         player.deck.push( shortcutMap[ "silver" ] )
-        turn.attacksInPlay[ "bureaucrat" ] = turn.numPlayers - 1
+        turn.attacksInPlay.append( Attack( self.name, player.name ))
 
 class Witch( Card ):
     def __init__( self ):
@@ -447,7 +445,7 @@ class Witch( Card ):
 
         print "Playing witch,  +2 cards."
         turn.cardsToDeal = 2
-        turn.attacksInPlay[ "witch" ] = turn.numPlayers - 1
+        turn.attacksInPlay.append( Attack( self.name, player.name ))
 
 class Spy( Card ):
     def __init__( self ):
@@ -675,8 +673,7 @@ class CouncilRoom( Card ):
         print "Playing %s, +4 cards, +1 buy.\n" % self.name
         turn.cardsToDeal = 4
         player.numBuys += 1
-        turn.attacksInPlay[ "council room" ] = turn.numPlayers - 1        
-
+        turn.attacksInPlay.append( Attack( self.name, player.name ))
 
 class Chapel( Card ):
     def __init__( self ):
@@ -782,7 +779,7 @@ class Player:
 class TurnState():
     def __init__( self, numPlayers ):
         self.cardsToDeal = 0
-        self.attacksInPlay = {}  # { 'card name' : turns }
+        self.attacksInPlay = [] # now a list of attacks
         self.numPlayers = numPlayers
         self.numThroneRooms = 0  # num consecutive throne rooms in play
         self.chainingThroneRooms = False # so we know when the chaining of tr's is finished
@@ -965,7 +962,6 @@ def dumpDecks( player ):
 
 def cardHelp( deckMap ):
 
-
     print "Help on cards\n"
     for i in range( 9 ):
 
@@ -1000,7 +996,7 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
 
     if not freeCard:
         if ( player.spendBonus + player.hand.getCoin() ) == 1:
-            print "You have %d coins to spend.\n" % (player.spendBonus + player.hand.getCoin())
+            print "You have %d coin to spend.\n" % (player.spendBonus + player.hand.getCoin())
         else:
             print "You have %d coins to spend.\n" % (player.spendBonus + player.hand.getCoin())
     else:
@@ -1159,7 +1155,7 @@ def main():
 
     # current
     currentCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                     Spy(), Smithy(), Remodel(), Market(), Adventurer() ]    
+                     Witch(), Smithy(), Remodel(), Market(), Adventurer() ]    
 
     
     startingCards = currentCards
@@ -1304,19 +1300,19 @@ def main():
             
             # get rid of finished attacks
             finishedAttacks = []
-            for ( cardName, turns ) in turn.attacksInPlay.items():
-                if turns == 0:
-                    finishedAttacks.append( cardName )
+            for attack in turn.attacksInPlay:
+                if attack.playerName == player.name:
+                    finishedAttacks.append( attack )
 
-            for cardName in finishedAttacks:
-                del turn.attacksInPlay[ cardName ]
-                
-            for ( cardName, turns ) in turn.attacksInPlay.items():
+            for attack in finishedAttacks:
+                turn.attacksInPlay.remove( attack )
+
             
-                if cardName == "militia":
+            for attack in turn.attacksInPlay:
+            
+                if attack.attackName == "militia":
 
-                    turn.attacksInPlay[ "militia" ] -= 1                
-                    print "A militia card is in play."
+                    print "%s's militia card is in play." % attack.playerName
                     
                     if player.hand.contains( shortcutMap["moat"] ):
                         print "You deflect the attack with the moat.\n"
@@ -1344,11 +1340,9 @@ def main():
                                 
                         print "Hand: %s" % (player.hand)
                         
-                if cardName == "bureaucrat":
+                if attack.attackName == "bureaucrat":
 
-                    print "A bureaucrat card is in play."
-
-                    turn.attacksInPlay[ "bureaucrat" ] -= 1
+                    print "%s's bureaucrat card is in play." % attack.playerName
 
                     if player.hand.contains( shortcutMap["moat"] ):
                         print "You deflect the attack with the moat.\n"
@@ -1369,11 +1363,9 @@ def main():
 
                         print "Hand: %s\n" % (player.hand)
                         
-                if cardName == "witch":
+                if attack.attackName == "witch":
 
-                    print "A witch is in play!"
-
-                    turn.attacksInPlay[ "witch" ] -= 1
+                    print "%s's witch is in play!" % attack.playerName
 
                     if player.hand.contains( shortcutMap["moat"] ):
                         print "You deflect the attack with the moat.\n"
@@ -1389,9 +1381,9 @@ def main():
                             player.discard.add( newCurse )
 
 
-                if cardName == "council room":
+                if attack.attackName == "council room":
 
-                    print "Council room was played."
+                    print "%s's played a council room." % attack.playerName
                     print "Draw another card."
 
                     turn.attacksInPlay[ "council room" ] -= 1
