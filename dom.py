@@ -1112,6 +1112,101 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
 
     return False
 
+def handleAttacks( turn, player, shortcutMap, gameTable ):
+
+        # get rid of finished attacks
+        finishedAttacks = []
+        for attack in turn.attacksInPlay:
+            if attack.playerName == player.name:
+                finishedAttacks.append( attack )
+
+        for attack in finishedAttacks:
+            turn.attacksInPlay.remove( attack )
+
+        for attack in turn.attacksInPlay:
+
+            if attack.attackName == "militia":
+
+                print "%s's militia card is in play." % attack.playerName
+
+                if player.hand.contains( shortcutMap["moat"] ):
+                    print "You deflect the attack with the moat.\n"
+
+                else:
+                    print "You must discard 2 cards now.\n"
+
+                    numDiscarded = 0
+                    while True:
+                        print "\nhand (%d): %s" % (player.numHands, player.hand)
+
+                        if numDiscarded >= 2: break
+
+                        cardName = raw_input("Card name to discard> ")
+                        try:
+                            discardCard = shortcutMap[ cardName ]
+                        except:
+                            print "Huh?"
+                            continue
+
+                        if player.hand.contains( discardCard ):
+                            numDiscarded += 1
+                            player.hand.remove( discardCard )
+                            player.discard.add( discardCard )
+
+                    print "Hand: %s" % (player.hand)
+
+            if attack.attackName == "bureaucrat":
+
+                print "%s's bureaucrat card is in play." % attack.playerName
+
+                if player.hand.contains( shortcutMap["moat"] ):
+                    print "You deflect the attack with the moat.\n"
+                else:
+
+                    cardToRemove = None
+                    for card in player.hand:
+                        if card.vp:
+                            cardToRemove = card
+                            break
+
+                    if cardToRemove:
+                        print "Putting %s from your hand on top of your deck.\n" % cardToRemove.shortcutName
+                        player.hand.remove( cardToRemove )
+                        player.deck.push( cardToRemove )
+                    else:
+                        print "You have no VP cards in your hand.\n"
+
+                    print "Hand: %s\n" % (player.hand)
+
+            if attack.attackName == "witch":
+
+                print "%s's witch is in play!" % attack.playerName
+
+                if player.hand.contains( shortcutMap["moat"] ):
+                    print "You deflect the attack with the moat.\n"
+                else:
+                    newCurse = None
+                    try:
+                        newCurse = gameTable.deckMap[ "curse" ].deal()
+                    except:
+                        print "No curse cards remaining."
+
+                    if newCurse:
+                        print "You take a curse.\n"
+                        player.discard.add( newCurse )
+
+
+            if attack.attackName == "council room":
+
+                print "%s's played a council room." % attack.playerName
+                print "Draw another card."
+
+                turn.attacksInPlay[ "council room" ] -= 1
+
+                player.dealCards(1)
+
+                print "\nHand: %s" % (player.hand)
+
 
 def main():
 
@@ -1158,7 +1253,7 @@ def main():
                      Witch(), Smithy(), Remodel(), Market(), Adventurer() ]    
 
     
-    startingCards = currentCards
+    startingCards = funCards
     
     gameTable.setKingdomCards( startingCards )
 
@@ -1229,9 +1324,6 @@ def main():
 
         if gameOver:
 
-
-
-
             for i in range( turn.numPlayers ):
 
                 # combine all the decks
@@ -1295,102 +1387,10 @@ def main():
 
         # deal with attack cards in play
         if isNewHand:
-            
             isNewHand = False
+            handleAttacks( turn, player, shortcutMap, gameTable )
             
-            # get rid of finished attacks
-            finishedAttacks = []
-            for attack in turn.attacksInPlay:
-                if attack.playerName == player.name:
-                    finishedAttacks.append( attack )
-
-            for attack in finishedAttacks:
-                turn.attacksInPlay.remove( attack )
-
-            
-            for attack in turn.attacksInPlay:
-            
-                if attack.attackName == "militia":
-
-                    print "%s's militia card is in play." % attack.playerName
-                    
-                    if player.hand.contains( shortcutMap["moat"] ):
-                        print "You deflect the attack with the moat.\n"
-                        
-                    else:
-                        print "You must discard 2 cards now.\n"
-
-                        numDiscarded = 0
-                        while True:
-                            print "\nhand (%d): %s" % (player.numHands, player.hand)
-
-                            if numDiscarded >= 2: break
-
-                            cardName = raw_input("Card name to discard> ")
-                            try:
-                                discardCard = shortcutMap[ cardName ]
-                            except:
-                                print "Huh?"
-                                continue
-                            
-                            if player.hand.contains( discardCard ):
-                                numDiscarded += 1
-                                player.hand.remove( discardCard )
-                                player.discard.add( discardCard )
-                                
-                        print "Hand: %s" % (player.hand)
-                        
-                if attack.attackName == "bureaucrat":
-
-                    print "%s's bureaucrat card is in play." % attack.playerName
-
-                    if player.hand.contains( shortcutMap["moat"] ):
-                        print "You deflect the attack with the moat.\n"
-                    else:
-                        
-                        cardToRemove = None
-                        for card in player.hand:
-                            if card.vp:
-                                cardToRemove = card
-                                break
-                    
-                        if cardToRemove:
-                            print "Putting %s from your hand on top of your deck.\n" % cardToRemove.shortcutName
-                            player.hand.remove( cardToRemove )
-                            player.deck.push( cardToRemove )
-                        else:
-                            print "You have no VP cards in your hand.\n"
-
-                        print "Hand: %s\n" % (player.hand)
-                        
-                if attack.attackName == "witch":
-
-                    print "%s's witch is in play!" % attack.playerName
-
-                    if player.hand.contains( shortcutMap["moat"] ):
-                        print "You deflect the attack with the moat.\n"
-                    else:
-                        newCurse = None
-                        try:
-                            newCurse = gameTable.deckMap[ "curse" ].deal()
-                        except:
-                            print "No curse cards remaining."
-
-                        if newCurse:
-                            print "You take a curse.\n"
-                            player.discard.add( newCurse )
-
-
-                if attack.attackName == "council room":
-
-                    print "%s's played a council room." % attack.playerName
-                    print "Draw another card."
-
-                    turn.attacksInPlay[ "council room" ] -= 1
-
-                    player.dealCards(1)
-
-                    print "\nHand: %s" % (player.hand)
+        # end of attacks section
                         
         # show available menu options to player
         if player.numActions > 0:
