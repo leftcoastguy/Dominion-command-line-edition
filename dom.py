@@ -7,6 +7,12 @@
 # buy menu, display how many buys are remaining
 
 # bug
+# not sure Spy is implemented entirely correctly
+# says you draw your own card *before* any cards are
+# revealed, which is not really possible given the
+# current design
+
+# bug
 # throne room "forces" you to execute your second action even
 # if it is impossible.  For instance, if you throne room a mine
 # but you only have a single copper in your hand, you can never
@@ -1260,10 +1266,84 @@ def handleAttacks( turn, player, shortcutMap, gameTable ):
                 print "\nHand: %s" % (player.hand)
 
 
+def selectKingdomCards():
+
+    while True:
+        print "\nChoose a card set to play."
+        print "\n(b) basic set"
+        print "(m) big money"
+        print "(i) interaction"
+        print "(d) size distortion"
+        print "(v) village square"
+        print "(s) special command-line edition set"
+        print "(r) random set"
+        print "(q) random set, require moat"
+
+        while True:
+            choice = raw_input( "\nCard set> " )
+            if choice in [ 'b', 'm', 'i', 'd', 'v', 's', 'r', 'q' ]:
+                break
+            else:
+                print "Please choose a valid card set."
+        
+
+        if choice == 'b':
+            cardSet = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
+                        Militia(), Smithy(), Remodel(), Market(), Mine() ]
+
+        if choice == 'm':
+            cardSet = [ Adventurer(), Bureaucrat(), Chancellor(), Chapel(),
+                        Feast(), Laboratory(), Market(), Mine(),
+                        Moneylender(), ThroneRoom(), ]
+
+        if choice == 'i':
+            cardSet = [ Bureaucrat(), Chancellor(), CouncilRoom(), Festival(),
+                        Library(), Militia(), Moat(), Spy(), Thief(),
+                        Village() ]
+
+        if choice == 'd':
+            cardSet = [ Cellar(), Chapel(), Feast(), Gardens(), Laboratory(),
+                        Thief(), Village(), Witch(), Woodcutter(), Workshop() ]
+
+        if choice == 'v':
+            cardSet = [ Bureaucrat(), Cellar(), Festival(), Library(),
+                        Market(), Remodel(), Smithy(), ThroneRoom(),
+                        Village(), Woodcutter() ]
+
+        if choice == 's':
+            cardSet = [ Moat(), Festival(), Mine(), Remodel(), Gardens(),
+                        ThroneRoom(), Spy(), Feast(), Cellar(), Workshop() ]
+
+        if choice == 'r':
+            cardSet = random.sample( [ Moat(), Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Thief(), Witch(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens(), Chapel() ], 10 )
+        
+        if choice == 'q':
+            cardSet = [ Moat() ]
+            randomSet = random.sample( [ Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Thief(), Witch(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens(), Chapel() ], 9 )
+            cardSet.extend( randomSet )
+    
+        # display the card choices
+        cardNum = 0
+        for card in cardSet:
+            print "%s " % ( card.shortcutName ),
+            cardNum += 1
+            if cardNum == 5:
+                print "\n",
+                
+        choice = raw_input( "\n\nUse this set? (y/n)>" )
+        if choice == 'y':
+            break
+
+    return cardSet
+
 def main():
 
     random.seed(None)
 
+    # set up shortcuts
+    shortcutMap = setUpShortcuts()
+
+    # create the players
     while True:
         numPlayers = raw_input("\nNumber of players (1-4)> ")
         try:
@@ -1277,49 +1357,11 @@ def main():
     # set up the game decks
     gameTable = Table( numPlayers )
 
-    # to change the cards in play, must manually edit this list
-    # for now
+    # choose kingdom cards to use
+    cardSet = selectKingdomCards() 
     
-    basicCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                   Militia(), Smithy(), Remodel(), Market(), Mine() ]
+    gameTable.setKingdomCards( cardSet )
 
-    longSilver = [ Moat(), Cellar(), Village(), Woodcutter(), Feast(),
-                   Bureaucrat(), Remodel(), Spy(), Market(), Adventurer() ]
-
-    basicWitch = [ Moat(), Cellar(), Village(), Woodcutter(), Thief(),
-                   Witch(), Smithy(), Remodel(), Market(), Mine() ]
-
-    spendyCards = [ Moat(), Cellar(), Witch(), Laboratory(), Moneylender(),
-                    Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
-
-    # this arrangement seems to lead to lots of "dead hands" when you don't
-    # quickly thin out your cards, fun but can be a long game, low scoring.
-    # thinning hands seems to be difficult yet important in this game
-    # also, not having a Village seems to really slow down hand-cycling
-    funCards = [ Moat(), Cellar(), Witch(), Woodcutter(), Moneylender(),
-                 Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
-
-
-    newestCards = [ Moat(), Remodel(), Moneylender(), Library(), CouncilRoom(),
-                    Feast(), Festival(), Bureaucrat(), Thief(), Gardens(),  ]
-
-    # last card to add, torn between thief and woodcutter
-    bigMoneyCards = [ Moat(), Bureaucrat(), Moneylender(), Festival(), Gardens(),
-                      Market(), Remodel(), Laboratory(), Village(), Cellar()  ]
-
-    # current
-    currentCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                     Witch(), Smithy(), Remodel(), Market(), Adventurer() ]    
-
-
-    randomCards = random.sample( [ Moat(), Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens() ], 10 )   
-    
-    gameTable.setKingdomCards( randomCards )
-
-    # set up shortcuts
-    shortcutMap = setUpShortcuts()
-
-    # create the players
     players = []
     for i in range(numPlayers):
         print "\nPlayer ", (i + 1)
@@ -1327,6 +1369,7 @@ def main():
         players.append( Player( name ) )
 
     # set up the player's deck
+    print "\n"
     for i in range(numPlayers):
         for j in range(7):
             players[i].deck.add( Copper() )
@@ -1339,7 +1382,7 @@ def main():
 
         # deal me a new one pardner
         players[i].dealCards(5)
-        
+
     isNewHand = True
     vp = 0
 
