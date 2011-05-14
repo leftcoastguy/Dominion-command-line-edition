@@ -6,6 +6,28 @@
 
 # buy menu, display how many buys are remaining
 
+# bug
+# in a 3-4 player game, multiple attacks are not always handled
+# correctly.  If two successive players play a militia, the third
+# player has to discard 4 cards.  Also, if a player plays a throne room
+# and then plays militia twice, the same thing happens.  Not sure if
+# militia is the only attack that is resolved incorrectly in this way.
+# part of this is because I resolve attacks for a player at the
+# beginning of their turn rather than immediately.  I think it is a
+# special bug for the militia, because the card is worded in such a way
+# that you only discard if you have 5 or more cards in hand.  The other
+# attacks would accumulate as play goes round anyway, so it isn't "wrong"
+# to apply two spy's when a player starts their turn (for example).  The
+# best fix for this is likely just to count the number of cards a player has
+# in hand prior to resolving each attack.
+
+# bug
+# if you play a mine and select a coin card not in your hand
+# you lose your action
+
+# bug
+# colorama isn't optional at this point
+
 # need to ensure that no player names are the same or else attacks
 # wont work correctly
 
@@ -18,7 +40,6 @@
 # card help could also be used during play to display what is happening
 # as a result of action cards being played
 
-# dash of color
 # multi-menu commands?
 # dump out statistics at end?
 # dump out history of entire game
@@ -53,7 +74,6 @@ class Deck:
 
     def shuffle( self ):
         random.shuffle( self.__cards )
-        print "...shuffling..."
         self.__numShuffles += 1
 
     def getNumShuffles( self ):
@@ -314,10 +334,12 @@ class Mine( Card ):
                     # TO DO: deck could be empty
                     mineCard = deckMap["silver"].deal()
                     player.hand.add( mineCard )
+                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.shortcutName, mineCard.shortcutName )
                 if trashedCard.name == "silver":
                     # TO DO: deck could be empty                    
                     mineCard = deckMap["gold"].deal()
                     player.hand.add( mineCard )
+                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.shortcutName, mineCard.shortcutName )
             else:
                 print "Huh?"
             break
@@ -329,7 +351,7 @@ class Moneylender( Card ):
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
 
-        print "Playing %s, +3 spend.\n"
+        print "Playing %s, +3 spend.\n" % self.name
 
         copperCard = shortcutMap[ "copper" ]
         if not player.hand.contains( copperCard ):
@@ -415,6 +437,7 @@ class Adventurer( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
+                print "%s shuffles %d cards." % ( player.name, len( player.deck )) 
                 player.discard = Deck()
                 newCard = player.deck.deal()
             
@@ -483,6 +506,7 @@ class Spy( Card ):
             except ValueError:
                 other.deck.extend( other.discard )
                 other.deck.shuffle()
+                print "%s shuffles %d cards." % ( player.name, len( player.deck ))                 
                 other.discard = Deck()
                 topCard = other.deck.deal()
 
@@ -532,6 +556,7 @@ class Thief( Card ):
                 except ValueError:
                     other.deck.extend( other.discard )
                     other.deck.shuffle()
+                    print "%s shuffles %d cards." % ( player.name, len( player.deck ))                     
                     other.discard = Deck()
                     topCard = other.deck.deal()
 
@@ -647,6 +672,7 @@ class Library( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
+                print "%s shuffles %d cards." % ( player.name, len( player.deck ))                 
                 player.discard = Deck()
                 topCard = player.deck.deal()
             if topCard.action:
@@ -771,6 +797,7 @@ class Player:
             except ValueError:
                 self.deck.extend( self.discard )
                 self.deck.shuffle()
+                print "%s shuffles %d cards." % ( self.name, len ( self.deck ) )
                 self.discard = Deck()
                 card = self.deck.deal()
             self.hand.add( card )
@@ -1201,8 +1228,6 @@ def handleAttacks( turn, player, shortcutMap, gameTable ):
                 print "%s's played a council room." % attack.playerName
                 print "Draw another card."
 
-                turn.attacksInPlay[ "council room" ] -= 1
-
                 player.dealCards(1)
 
                 print "\nHand: %s" % (player.hand)
@@ -1213,7 +1238,7 @@ def main():
     random.seed(None)
 
     while True:
-        numPlayers = raw_input("\nNumber of Players (1-4) > ")
+        numPlayers = raw_input("\nNumber of players (1-4)> ")
         try:
             numPlayers = int(numPlayers)
         except:
@@ -1248,14 +1273,21 @@ def main():
                  Adventurer(), Gardens(), Remodel(), Spy(), Festival() ]
 
 
+    newestCards = [ Moat(), Remodel(), Moneylender(), Library(), CouncilRoom(),
+                    Feast(), Festival(), Bureaucrat(), Thief(), Gardens(),  ]
+
+    # last card to add, torn between thief and woodcutter
+    bigMoneyCards = [ Moat(), Bureaucrat(), Moneylender(), Festival(), Gardens(),
+                      Market(), Remodel(), Laboratory(), Village(), Cellar()  ]
+
     # current
     currentCards = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
                      Witch(), Smithy(), Remodel(), Market(), Adventurer() ]    
 
+
+    randomCards = random.sample( [ Moat(), Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens() ], 10 )   
     
-    startingCards = funCards
-    
-    gameTable.setKingdomCards( startingCards )
+    gameTable.setKingdomCards( randomCards )
 
     # set up shortcuts
     shortcutMap = setUpShortcuts()
@@ -1276,6 +1308,7 @@ def main():
             players[i].deck.add( Estate() )
 
         players[i].deck.shuffle()
+        print "%s shuffles %d cards." % ( players[i].name, len( players[i].deck) )
 
         # deal me a new one pardner
         players[i].dealCards(5)
