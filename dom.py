@@ -7,6 +7,12 @@
 # buy menu, display how many buys are remaining
 
 # bug
+# throne room "forces" you to execute your second action even
+# if it is impossible.  For instance, if you throne room a mine
+# but you only have a single copper in your hand, you can never
+# resolve the second mine action.
+
+# bug
 # in a 3-4 player game, multiple attacks are not always handled
 # correctly.  If two successive players play a militia, the third
 # player has to discard 4 cards.  Also, if a player plays a throne room
@@ -23,26 +29,47 @@
 
 # bug
 # if you play a mine and select a coin card not in your hand
-# you lose your action
+# you lose your action, this may be fixed, need to verify
 
 # bug
 # colorama isn't optional at this point
 
+# bug
 # need to ensure that no player names are the same or else attacks
-# wont work correctly
+# wont work correctly, this should be fixed, need to verify
 
+# bug
+# the fact that curses show up in the buy menu is probably wrong
+# because I think you are free to take a curse (for yourself) since
+# they cost 0.  This would be stupid.
+
+# refactor
 # still quite a bit of ugliness with this design
 # getting/putting back cards for buyCard() is retarded
 
+# refactor
+# play method on Card class takes too many arguments
+
+# feature request
+# on chancellor card, display how many cards are left in your deck
+# it might also be useful to make a count of all players card in all
+# their various decks available to any player, since this is legal anyway
+
+# feature request
+# report first province bought might be cool
+# also if someone's opening hand is 5 copper, making a snide comment
+# (about shuffling perhaps?) might be cute.  Could dress up the
+# actions/attacks messaging a bit in general.
+
+# feature request
 # create debug mode
 
+# feature request
 # card help
-# card help could also be used during play to display what is happening
-# as a result of action cards being played
 
-# multi-menu commands?
-# dump out statistics at end?
-# dump out history of entire game
+# feature request
+# entire game history?
+
 
 import random
 import colorama
