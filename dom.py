@@ -103,9 +103,6 @@
 # create debug mode
 
 # feature request
-# make card help better, prettier, targeted to current configuration
-
-# feature request
 # game log files
 
 
@@ -1054,8 +1051,42 @@ def dumpDecks( player ):
 
 def cardHelp( deckMap ):
 
-    print "Card help:\n"
+    print
+    for i in range( 9 ):
+        vpCards = []
+        for deck in deckMap.values():
+            if deck.empty():
+                continue
 
+            # TO DO: this really needs fixing
+            # get the card
+            card = deck.deal()
+
+            if card.vp == i and card.vp:
+                vpCards.append( card )
+                
+            # now put it back, cringe
+            deck.add( card )
+
+        # hack for gardens card
+        for card in vpCards:
+            if card.name != 'gardens':
+                print "%s (%d VP) " % (card.shortcutName, card.vp),
+
+    print
+    # do all this again just to show gardens VP
+    # correctly if it's in the game, ack!
+    for deck in deckMap.values():
+        if deck.empty():
+            continue
+        card = deck.deal()
+        if card.name == 'gardens':
+            print "%s (%d VP per 10 cards in deck)" % (card.shortcutName, card.vp )
+        # now put it back, cringe
+        deck.add( card )
+
+        
+    print
 
     for i in range( 9 ):
 
@@ -1576,7 +1607,7 @@ def main():
 
         print "(c) count cards"
         print "(h) card help"
-        print "(d) done with turn"
+        print "(x) done with turn"
                 
         while True:
             task = raw_input("> ")
@@ -1665,7 +1696,7 @@ def main():
 
         # *******************************************************
             
-        if task == "d":
+        if task == "x":
             # if a feast was played, the card gets trashed
             # after it's played
             while player.inPlay.contains( shortcutMap[ "feast" ] ):
