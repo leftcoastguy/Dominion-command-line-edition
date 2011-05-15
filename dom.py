@@ -39,10 +39,6 @@
 # in hand prior to resolving each attack.
 
 # bug
-# if you play a mine and select a coin card not in your hand
-# you lose your action, this may be fixed, need to verify
-
-# bug
 # colorama isn't optional at this point
 
 # bug
@@ -107,7 +103,16 @@
 
 
 import random
-import colorama
+
+
+# if colorama isn't found, that's ok
+# we should just set the colored text strings if the import
+# succeeds and if it doesn't, I could print a message about
+# how the game looks prettier if colorama is installed
+try:
+    import colorama
+except ImportError:
+    colorama = None
 
 class Deck:
     def __init__( self ):
@@ -204,9 +209,9 @@ class Attack:
         self.playerName = playerName
 
 class Card:
-    def __init__( self, name, shortcutName, cost, value, action, vp, helpText = "" ):
+    def __init__( self, name, displayName, cost, value, action, vp, helpText = "" ):
         self.name = name
-        self.shortcutName = shortcutName
+        self.displayName = displayName
         self.cost = cost
         self.value = value
         self.action = action
@@ -215,7 +220,7 @@ class Card:
 
 
     def __repr__( self ):
-        return "%s" % self.shortcutName
+        return "%s" % self.displayName
 
     def __eq__( self, other ):
         return self.name == other.name
@@ -268,7 +273,7 @@ class Cellar( Card ):
                 continue
                 
             if player.hand.contains( cardToRemove ):
-                print "Discarded %s." % cardToRemove.shortcutName
+                print "Discarded %s." % cardToRemove.displayName
                 turn.cardsToDeal += 1
                 player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
@@ -396,12 +401,12 @@ class Mine( Card ):
                     # TO DO: deck could be empty
                     mineCard = deckMap["silver"].deal()
                     player.hand.add( mineCard )
-                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.shortcutName, mineCard.shortcutName )
+                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.displayName, mineCard.displayName )
                 if trashedCard.name == "silver":
                     # TO DO: deck could be empty                    
                     mineCard = deckMap["gold"].deal()
                     player.hand.add( mineCard )
-                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.shortcutName, mineCard.shortcutName )
+                    print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.displayName, mineCard.displayName )
                 break
             else:
                 print "The mine only operates on silver or gold in hand."
@@ -503,7 +508,7 @@ class Adventurer( Card ):
                 player.discard = Deck()
                 newCard = player.deck.deal()
             
-            print "Dealt %s." % (newCard.shortcutName),
+            print "Dealt %s." % (newCard.displayName),
             
             if newCard.value:
                 print " Added to hand."
@@ -518,7 +523,7 @@ class Bureaucrat( Card ):
         Card.__init__( self, "bureaucrat", "(b)ureaucrat", 4, 0, True, 0, "Gain a silver on top of your deck. Each other player reveals a victory card from their hand and puts it on top of their deck." )
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
-        print "Playing %s. A new %s added to discard pile.\n" % ( self.name, shortcutMap[ "silver" ].shortcutName)
+        print "Playing %s. A new %s added to discard pile.\n" % ( self.name, shortcutMap[ "silver" ].displayName)
         player.deck.push( shortcutMap[ "silver" ] )
         turn.attacksInPlay.append( Attack( self.name, player.name ))
 
@@ -574,9 +579,9 @@ class Spy( Card ):
 
 
             if isPlayer:
-                print "\n%s, your next card is %s." % ( other.name, topCard.shortcutName )
+                print "\n%s, your next card is %s." % ( other.name, topCard.displayName )
             else:
-                print "\nThe top card on %s's deck is %s" % ( other.name, topCard.shortcutName )
+                print "\nThe top card on %s's deck is %s" % ( other.name, topCard.displayName )
 
             while True:
                 fate = raw_input( "(d)iscard it or (p)ut it back? >" )
@@ -584,10 +589,10 @@ class Spy( Card ):
                     break
 
             if fate == "d":
-                print "\nDiscarded %s's %s" % ( other.name, topCard.shortcutName )
+                print "\nDiscarded %s's %s" % ( other.name, topCard.displayName )
                 other.discard.add( topCard )
             else:
-                print "\nPut %s's %s back on the deck." % ( other.name, topCard.shortcutName )
+                print "\nPut %s's %s back on the deck." % ( other.name, topCard.displayName )
                 other.deck.push( topCard )
 
 class Thief( Card ):
@@ -626,7 +631,7 @@ class Thief( Card ):
                     treasure += 1
                 reveal.append( topCard )
 
-            print "\nThe next 2 cards from %s's deck are %s, %s." % ( other.name, reveal[0].shortcutName, reveal[1].shortcutName )
+            print "\nThe next 2 cards from %s's deck are %s, %s." % ( other.name, reveal[0].displayName, reveal[1].displayName )
 
             if treasure == 1:
                 
@@ -660,7 +665,7 @@ class Thief( Card ):
                     if whichOne == "":
                         # discard both
                         for card in reveal:
-                            print "Discarded: %s" % card.shortcutName
+                            print "Discarded: %s" % card.displayName
                             other.discard.add( card )
                         break
 
@@ -684,13 +689,13 @@ class Thief( Card ):
                     # we know there are 2 cards in reveal list, right?
                     # now resolve their choice
                     if reveal[0] == theCard:
-                        print "Trashed %s." % reveal[0].shortcutName
-                        print "Discarded %s." % reveal[1].shortcutName
+                        print "Trashed %s." % reveal[0].displayName
+                        print "Discarded %s." % reveal[1].displayName
                         localTrash.append( reveal[0] )
                         other.discard.add( reveal[1] )
                     else:
-                        print "Trashed %s." % reveal[1].shortcutName
-                        print "Discarded %s." % reveal[0].shortcutName                        
+                        print "Trashed %s." % reveal[1].displayName
+                        print "Discarded %s." % reveal[0].displayName                        
                         localTrash.append( reveal[1] )
                         other.discard.add( reveal[0] )
                     break
@@ -699,7 +704,7 @@ class Thief( Card ):
                 print "%s has no treasure in hand." % other.name
                 # put 'em in the discard pile
                 for card in reveal:
-                    print "Discarded %s." % card.shortcutName                        
+                    print "Discarded %s." % card.displayName                        
                     other.discard.add( card )
                 continue
 
@@ -708,16 +713,16 @@ class Thief( Card ):
         if len( localTrash ):
             print "\nSteal any trashed cards you wish..."
             for card in localTrash:
-                print "\n%s: " % card.shortcutName,
+                print "\n%s: " % card.displayName,
                 while True:
                     stealIt = raw_input("(s)teal or (t)rash it?> ")
                     if stealIt in [ "t", "s" ]:
                         break
                 if stealIt == "s":
-                    print "%s stole a %s!" % ( player.name, card.shortcutName )
+                    print "%s stole a %s!" % ( player.name, card.displayName )
                     player.discard.add( card )
                 else:
-                    print "Trashed %s." % card.shortcutName
+                    print "Trashed %s." % card.displayName
         else:
             print "There is nothing to steal!"
 
@@ -788,7 +793,7 @@ class Chapel( Card ):
                 continue
             
             if player.hand.contains( trashedCard ):
-                print "Trashed %s" % trashedCard.shortcutName
+                print "Trashed %s" % trashedCard.displayName
                 cardsTrashed += 1
                 player.hand.remove( trashedCard )
             else:
@@ -1071,7 +1076,7 @@ def cardHelp( deckMap ):
         # hack for gardens card
         for card in vpCards:
             if card.name != 'gardens':
-                print "%s (%d VP) " % (card.shortcutName, card.vp),
+                print "%s (%d VP) " % (card.displayName, card.vp),
 
     print
     # do all this again just to show gardens VP
@@ -1081,7 +1086,7 @@ def cardHelp( deckMap ):
             continue
         card = deck.deal()
         if card.name == 'gardens':
-            print "%s (%d VP per 10 cards in deck)" % (card.shortcutName, card.vp )
+            print "%s (%d VP per 10 cards in deck)" % (card.displayName, card.vp )
         # now put it back, cringe
         deck.add( card )
 
@@ -1112,7 +1117,7 @@ def cardHelp( deckMap ):
             deck.add( card )
 
         for thisCard in cardChoices:
-            print "%s: %s" % ( thisCard.shortcutName, thisCard.helpText )
+            print "%s: %s" % ( thisCard.displayName, thisCard.helpText )
     
 
 # max spend is the upper limit of cards to display
@@ -1148,7 +1153,7 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
             card = deck.deal()
 
             if card.cost == i:
-                cardChoices.append( card.shortcutName )
+                cardChoices.append( card.displayName )
                 
             # now put it back, cringe
             deck.add( card )
@@ -1197,7 +1202,7 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
     if (( player.spendBonus + player.hand.getCoin() ) >= card.cost or freeCard ):
             
         player.discard.add( card )
-        print "\n%s bought a %s.\n" % ( player.name, card.shortcutName )
+        print "\n%s bought a %s.\n" % ( player.name, card.displayName )
 
         # if they get this "buy" due to another card (ie. remodel)
         # then it doesn't cost them one of their buys or end their actions this turn
@@ -1298,7 +1303,7 @@ def handleAttacks( turn, player, shortcutMap, gameTable ):
                             break
 
                     if cardToRemove:
-                        print "Putting %s from your hand on top of your deck.\n" % cardToRemove.shortcutName
+                        print "Putting %s from your hand on top of your deck.\n" % cardToRemove.displayName
                         player.hand.remove( cardToRemove )
                         player.deck.push( cardToRemove )
                     else:
@@ -1380,7 +1385,7 @@ def selectKingdomCards():
 
         # feudal lords, also thought about festival instead of chancellor?
         if choice == 'f':
-            cardSet = [ Moat(), Chancellor(), Bureaucrat(), Feast(), Gardens(),
+            cardSet = [ Moat(), Woodcutter(), Bureaucrat(), Feast(), Gardens(),
                         Militia(), Remodel(), Market(), Mine(), ThroneRoom() ]
         
         if choice == 's':
@@ -1398,7 +1403,7 @@ def selectKingdomCards():
         # display the card choices
         cardNum = 0
         for card in cardSet:
-            print "%s " % ( card.shortcutName ),
+            print "%s " % ( card.displayName ),
             cardNum += 1
             if cardNum == 5:
                 print "\n",
@@ -1547,7 +1552,7 @@ def main():
             print "*******************************"                    
             break
 
-        taskList = [ "+", "d", "h", "c" ]
+        taskList = [ "+", "x", "h", "c" ]
 
         # if the game is not over, keep going
         # deal 5 cards, reset counters
@@ -1689,7 +1694,7 @@ def main():
                         # do it again
                         # second play is "free" so shouldn't need to
                         # increment or decrement numActions for this one
-                        print "\nThrone Room active, re-playing %s" % cardInPlay.shortcutName
+                        print "\nThrone Room active, re-playing %s" % cardInPlay.displayName
                         cardInPlay.play( player, players, turn, shortcutMap, gameTable.deckMap )
                         
                         player.dealCards( turn.cardsToDeal )
