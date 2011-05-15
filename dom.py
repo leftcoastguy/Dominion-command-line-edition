@@ -61,10 +61,12 @@
 # refactor
 # play method on Card class takes too many arguments
 
+# refactor
+# menu commands should be in a dict of command to functions
+
 # feature request
 # change (c) count kingdom cards option to something like
 # (s) show kingdom cards (name, price, # card remaining)
-
 
 # feature request
 # on chancellor card, display how many cards are left in your deck
@@ -1052,12 +1054,18 @@ def dumpDecks( player ):
 
 def cardHelp( deckMap ):
 
-    print "Help on cards\n"
+    print "Card help:\n"
+
+
     for i in range( 9 ):
 
-        # This is awful and copy/pasted from buyCard()
+        cardChoices = []
+        # could add a shortcut instance to Card()
+        # then print that as the shortcut option
+        # still requires maintaining separate shortcutMap (for now)
         
-        cardHelp = {}
+        # OMG this is an awful hack!
+        # makes doing a list comprehension nigh
         for deck in deckMap.values():
             if deck.empty():
                 continue
@@ -1066,16 +1074,15 @@ def cardHelp( deckMap ):
             # get the card
             card = deck.deal()
 
-            if card.cost == i:
-                cardHelp[ card.name ] = card.helpText
+            if card.cost == i and card.action:
+                cardChoices.append( card )
                 
             # now put it back, cringe
             deck.add( card )
+
+        for thisCard in cardChoices:
+            print "%s: %s" % ( thisCard.shortcutName, thisCard.helpText )
     
-        for ( cardName, cardText ) in cardHelp.items():
-            print "%12s: %s" % (cardName, cardText)
-
-
 
 # max spend is the upper limit of cards to display
 # and determines which cards are available for purchase on this buy
@@ -1493,9 +1500,12 @@ def main():
                         counts[ card.name ] += 1
                     else:
                         counts[ card.name ] = 1
-                print "Player %s" % ( players[i].name)
-                for (cardName, count) in counts.items():
-                    print "     %s %d" % ( cardName, count )
+
+                # for now, stop dumping out the final
+                # decks
+                #print "Player %s" % ( players[i].name)
+                #for (cardName, count) in counts.items():
+                #    print "     %s %d" % ( cardName, count )
                     
             print "*******************************"
             print "********** GAME OVER **********"
@@ -1506,7 +1516,7 @@ def main():
             print "*******************************"                    
             break
 
-        taskList = [ "+", "x", "h", "c" ]
+        taskList = [ "+", "d", "h", "c" ]
 
         # if the game is not over, keep going
         # deal 5 cards, reset counters
@@ -1564,9 +1574,9 @@ def main():
             print "(b) buy card (into discard pile)"
             taskList += "b"
 
-        print "(c) count kingdom cards"
-        print "(h) help on cards"
-        print "(x) done with turn"
+        print "(c) count cards"
+        print "(h) card help"
+        print "(d) done with turn"
                 
         while True:
             task = raw_input("> ")
@@ -1655,7 +1665,7 @@ def main():
 
         # *******************************************************
             
-        if task == "x":
+        if task == "d":
             # if a feast was played, the card gets trashed
             # after it's played
             while player.inPlay.contains( shortcutMap[ "feast" ] ):
