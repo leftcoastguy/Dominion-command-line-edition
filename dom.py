@@ -7,10 +7,22 @@
 # buy menu, display how many buys are remaining
 
 # bug
-# not sure Spy is implemented entirely correctly
-# says you draw your own card *before* any cards are
-# revealed, which is not really possible given the
-# current design
+# this bug should probably trump (fix) any other existing bugs related to
+# the order that attacks are resolved.
+# There should be multiple levels of rules for resolving "pending actions",
+# which is a more general term for attacks and other actions.
+# The highest priority rule is always resolve pending actions in player
+# number order.  If it's player 1's turn, resolve actions in this order: 2,
+# 3, 4.
+# Next it probably makes sense to resolve actions in sequence number order.
+# probably add a sequence number to pending actions.
+
+
+# bug
+# I think there is a bug in Spy.
+# Says the player playing the Spy should draw the next card *before*
+# they reveal their next card.  However, I don't think the player who
+# plays the Spy actually reveals their *next* card?
 
 # bug
 # throne room "forces" you to execute your second action even
@@ -57,9 +69,17 @@
 # play method on Card class takes too many arguments
 
 # feature request
+# change (c) count kingdom cards option to something like
+# (s) show kingdom cards (name, price, # card remaining)
+
+
+# feature request
 # on chancellor card, display how many cards are left in your deck
 # it might also be useful to make a count of all players card in all
 # their various decks available to any player, since this is legal anyway
+
+# feature request
+# game editor, allows you to create/save/edit/name starting decks
 
 # feature request
 # report first province bought might be cool
@@ -68,13 +88,30 @@
 # actions/attacks messaging a bit in general.
 
 # feature request
+# transactional resolution of all action cards
+# the current design keeps a queue of pending actions
+# on each players turn, they play as many action cards/attacks as they are able
+# then, the actions are resolved as play moves from player to player.
+# I found one case where this model is broken.
+# When a Spy is played, the attack cannot be postponed.
+# There is a hack for this one case.
+# The nature of this attack is that if we postpone resolving it until the
+# attacked player's turn, we have to pass control "back to the player who
+# played it" so they can choose whether or not it is discarded or put back.
+# Hence, the current model of invoking a play() method on each card won't
+# work.  There needs to be a transactional model where when I "play" a
+# card, somehow that is an atomic operation... all players immediately
+# resolve that action then and there.  This also solves all the ordering
+# problems with the current turn by turn resoltuion.
+
+# feature request
 # create debug mode
 
 # feature request
-# card help
+# make card help better, prettier, targeted to current configuration
 
 # feature request
-# entire game history?
+# game log files
 
 
 import random
@@ -393,7 +430,7 @@ class Moneylender( Card ):
             player.numActions += 1            
             return
 
-        print "Trashed %s." % copperCard
+        print "%s trashed %s." % ( player.name, copperCard )
         player.hand.remove( copperCard )
         player.spendBonus += 3
 
@@ -521,7 +558,7 @@ class Spy( Card ):
 
         # I hate to do this in the card itself, because now it requires
         # passing in all the other players.  However, it will be faster/
-        # easier to resolve in right now.
+        # easier to resolve it right now.
         for other in players:
             
             isPlayer = False
@@ -1275,13 +1312,13 @@ def selectKingdomCards():
         print "(i) interaction"
         print "(d) size distortion"
         print "(v) village square"
-        print "(s) special command-line edition set"
+        print "(f) feudal lords"
         print "(r) random set"
         print "(q) random set, require moat"
 
         while True:
             choice = raw_input( "\nCard set> " )
-            if choice in [ 'b', 'm', 'i', 'd', 'v', 's', 'r', 'q' ]:
+            if choice in [ 'b', 'm', 'i', 'd', 'v', 'f', 'r', 'q' ]:
                 break
             else:
                 print "Please choose a valid card set."
@@ -1310,6 +1347,11 @@ def selectKingdomCards():
                         Market(), Remodel(), Smithy(), ThroneRoom(),
                         Village(), Woodcutter() ]
 
+        # feudal lords, also thought about festival instead of chancellor?
+        if choice == 'f':
+            cardSet = [ Moat(), Chancellor(), Bureaucrat(), Feast(), Gardens(),
+                        Militia(), Remodel(), Market(), Mine(), ThroneRoom() ]
+        
         if choice == 's':
             cardSet = [ Moat(), Festival(), Mine(), Remodel(), Gardens(),
                         ThroneRoom(), Spy(), Feast(), Cellar(), Workshop() ]
@@ -1336,7 +1378,26 @@ def selectKingdomCards():
 
     return cardSet
 
+
+def showTitleFromFile():
+
+    title = ""
+    with open("title.txt", "r") as f:
+        title = f.read()
+    f.close()
+    print title
+
+
+
+
+
+
+
+
+                                                   
 def main():
+
+    showTitleFromFile()
 
     random.seed(None)
 
@@ -1364,7 +1425,7 @@ def main():
 
     players = []
     for i in range(numPlayers):
-        print "\nPlayer ", (i + 1)
+        print "\nPlayer ", i
         name = raw_input("Enter your name> ")
         players.append( Player( name ) )
 
@@ -1397,7 +1458,6 @@ def main():
 
         # numPlayers is actually the number of players entered at beginning
         # p is the current player number starting with player 0
-        # when displaying p, increment by 1
         if p == turn.numPlayers:
             p = 0
         
@@ -1481,7 +1541,9 @@ def main():
             provinces += player.deck.getNumProvinces()
 
         # next action this hand (or new hand)
+        # always message whose turn it is first
         print "\n%s, your turn.  (%d/%d)\n" % ( player.name, player.deck.getNumShuffles(), player.numHands )
+
         print "Hand: %s" % (player.hand)
         if player.spendBonus + player.hand.getCoin() == 1:
             print "Actions: %d  Buys: %d  Spend: %d coin\n" % ( player.numActions, player.numBuys, player.spendBonus + player.hand.getCoin() )
