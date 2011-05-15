@@ -1343,18 +1343,21 @@ def selectKingdomCards():
 
     while True:
         print "\nChoose a card set to play."
-        print "\n(b) basic set"
+        print "\n(b) beginners setup"
+        print "(f) feudal lords"
+        print "(t) mountainside villages"
+        print "(w) warring states"
+        print "(a) aristocracy"
+        print "(q) random set, require moat"
+        print "(r) random set"
         print "(m) big money"
         print "(i) interaction"
         print "(d) size distortion"
         print "(v) village square"
-        print "(f) feudal lords"
-        print "(r) random set"
-        print "(q) random set, require moat"
 
         while True:
             choice = raw_input( "\nCard set> " )
-            if choice in [ 'b', 'm', 'i', 'd', 'v', 'f', 'r', 'q' ]:
+            if choice in [ 'b', 'm', 'i', 'd', 'v', 'f', 't', 'w', 'a', 'r', 'q' ]:
                 break
             else:
                 print "Please choose a valid card set."
@@ -1383,15 +1386,28 @@ def selectKingdomCards():
                         Market(), Remodel(), Smithy(), ThroneRoom(),
                         Village(), Woodcutter() ]
 
-        # feudal lords, also thought about festival instead of chancellor?
+        # feudal lords (small-scale war)
         if choice == 'f':
-            cardSet = [ Moat(), Woodcutter(), Bureaucrat(), Feast(), Gardens(),
+            cardSet = [ Moat(), Woodcutter(), Cellar(), Feast(), Gardens(),
                         Militia(), Remodel(), Market(), Mine(), ThroneRoom() ]
-        
-        if choice == 's':
-            cardSet = [ Moat(), Festival(), Mine(), Remodel(), Gardens(),
-                        ThroneRoom(), Spy(), Feast(), Cellar(), Workshop() ]
 
+        # mountainside villages (mythical)
+        if choice == 't':
+            cardSet = [ Village(), Witch(), Spy(), Mine(), Woodcutter(),
+                        Workshop(), Chapel(), Feast(), Festival(), Smithy() ]
+
+        # warring states (large-scale war)
+        if choice == 'w':
+            cardSet = [ Militia(), Moat(), Spy(), Thief(), Adventurer(),
+                        Village(), Moneylender(), Festival(), CouncilRoom(),
+                        Bureaucrat() ] 
+
+        # aristocracy (gentlemanly attacks)
+        if choice == 'a':
+            cardSet = [ Cellar(), Bureaucrat(), Moneylender(),
+                        Chancellor(), Remodel(), Gardens(), Library(),
+                        ThroneRoom(), Spy(), Market() ]
+            
         if choice == 'r':
             cardSet = random.sample( [ Moat(), Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Thief(), Witch(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens(), Chapel() ], 10 )
         
