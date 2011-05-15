@@ -17,13 +17,6 @@
 # Next it probably makes sense to resolve actions in sequence number order.
 # probably add a sequence number to pending actions.
 
-
-# bug
-# I think there is a bug in Spy.
-# Says the player playing the Spy should draw the next card *before*
-# they reveal their next card.  However, I don't think the player who
-# plays the Spy actually reveals their *next* card?
-
 # bug
 # throne room "forces" you to execute your second action even
 # if it is impossible.  For instance, if you throne room a mine
@@ -396,7 +389,7 @@ class Mine( Card ):
                 trashedCard = shortcutMap[ cardName ]
             except:
                 print "Error: %s not in shortcutMap!" % cardName
-                break
+                continue
 
             if trashedCard.name in trashList and player.hand.contains( trashedCard ):
                 player.hand.remove( trashedCard )
@@ -410,9 +403,9 @@ class Mine( Card ):
                     mineCard = deckMap["gold"].deal()
                     player.hand.add( mineCard )
                     print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.shortcutName, mineCard.shortcutName )
+                break
             else:
-                print "Huh?"
-            break
+                print "The mine only operates on silver or gold in hand."
 
 
 class Moneylender( Card ):
