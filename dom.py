@@ -2,8 +2,6 @@
 
 # to do
 
-# allow (h) help menu from buying a card menu
-
 # buy menu, display how many buys are remaining
 
 # bug
@@ -39,20 +37,9 @@
 # in hand prior to resolving each attack.
 
 # bug
-# colorama isn't optional at this point
-
-# bug
-# need to ensure that no player names are the same or else attacks
-# wont work correctly, this should be fixed, need to verify
-
-# bug
 # the fact that curses show up in the buy menu is probably wrong
 # because I think you are free to take a curse (for yourself) since
 # they cost 0.  This would be stupid.
-
-# refactor
-# still quite a bit of ugliness with this design
-# getting/putting back cards for buyCard() is retarded
 
 # refactor
 # play method on Card class takes too many arguments
@@ -71,6 +58,9 @@
 
 # feature request
 # game editor, allows you to create/save/edit/name starting decks
+# actually, the "editor" will be any editor you want
+# will just have a simple text file for loading all the saved
+# deck combos.
 
 # feature request
 # report first province bought might be cool
@@ -112,6 +102,7 @@ import random
 try:
     import colorama
 except ImportError:
+    print "ImportError: Couldn't find the colorama module."
     colorama = None
 
 class Deck:
@@ -132,6 +123,11 @@ class Deck:
             raise ValueError
 
         return self.__cards.pop(0)
+
+    def peek( self ):
+        if len( self.__cards ) == 0:
+            raise ValueError
+        return self.__cards[0]
 
     def push( self, card ):
         self.__cards.insert( 0, card )
@@ -841,6 +837,55 @@ class Silver( Card ):
 class Gold( Card ):
     def __init__( self ):
         Card.__init__( self, "gold", "\033[33m(g)old\033[39m", 6, 3, False, 0, "3 coins." )
+
+
+# Not sure if this approach is ultimately what I want to do?
+# Or the best approach, per se.
+# Why not just define a __call__ method?
+class CardFactory():
+    def __init__( self ):
+        self.__cards = { "estate": Estate(),
+                         "duchy": Duchy(),
+                         "province": Province(),
+                         "gardens": Gardens(),
+                         "gold": Gold(),
+                         "silver": Silver(),
+                         "copper": Copper(),
+                         "curse": Curse(),
+                         "cellar": Cellar(),
+                         "chapel": Chapel(),
+                         "moat": Moat(),
+                         "chancellor": Chancellor(),
+                         "village": Village(),
+                         "woodcutter": Woodcutter(),
+                         "workshop": Workshop(),
+                         "bureaucrat": Bureaucrat(),
+                         "feast": Feast(),
+                         "militia": Militia(),
+                         "moneylender": Moneylender(),
+                         "remodel": Remodel(),
+                         "smithy": Smithy(),
+                         "spy": Spy(),
+                         "thief": Thief(),
+                         "throne room": ThroneRoom(),
+                         "gardens": Gardens(),
+                         "council room": CouncilRoom(),
+                         "festival": Festival(),
+                         "laboratory": Laboratory(),
+                         "library": Library(),
+                         "market": Market(),
+                         "mine": Mine(),
+                         "witch": Witch(),
+                         "adventurer": Adventurer() 
+                         }
+
+    def create( self, cardName ):
+        card = None
+        try:
+            card = self.__cards[ cardName ]
+        except KeyError:
+            print "CardFactory.create( cardName ) got unknown card name."
+        return card
         
 
 class Player:
@@ -880,8 +925,9 @@ class TurnState():
 
 
 class Table():
-    def __init__( self, numPlayers ):
+    def __init__( self, numPlayers, cardFactory ):
         self.__numPlayers = numPlayers
+        self.__factory = cardFactory
         self.pile1 = Deck()
         self.pile2 = Deck()
         self.pile3 = Deck()
@@ -908,6 +954,7 @@ class Table():
         self.__setupPiles()
 
     # decks is just a list of card instances  [ Moat(), Cellar(), Moneylender() ]
+
     def __setupPiles( self ):
 
         # the deckMap maps user-input strings (ie. card names)
@@ -928,51 +975,55 @@ class Table():
 
         # set up variable number of vp cards
         for i in range(cardsInDeck):
-            self.pileEstate.add( Estate() )
-            self.pileDuchy.add( Duchy() )
-            self.pileProvince.add( Province() )
+            self.pileEstate.add( self.__factory.create( "estate" ))
+            self.pileDuchy.add( self.__factory.create( "duchy" ))
+            self.pileProvince.add( self.__factory.create( "province" ))
 
         for i in range(60):    
-            self.pileCopper.add( Copper() )
+            self.pileCopper.add( self.__factory.create( "copper" ))
 
         for i in range(40):    
-            self.pileSilver.add( Silver() )
+            self.pileSilver.add( self.__factory.create( "silver" ))
 
         for i in range(30):
-            self.pileCurse.add( Curse() )
-            self.pileGold.add( Gold() )
+            self.pileCurse.add( self.__factory.create( "curse" ))
+            self.pileGold.add( self.__factory.create( "gold" ))
 
 
     # if this method is not called independently at setup time
     # there will be no kingdom cards for the game to use!
-    # The cardList is a list of kingdom card instances
+    # cardList used to be a list of kingdom card instances
+    # but refactored to now just contain card names (strings)
     def setKingdomCards( self, cardList ):
         
         # Is this Python?
-        self.deckMap[ cardList[1].name ] = self.pile1
-        self.deckMap[ cardList[2].name ] = self.pile2
-        self.deckMap[ cardList[3].name ] = self.pile3
-        self.deckMap[ cardList[4].name ] = self.pile4
-        self.deckMap[ cardList[5].name ] = self.pile5
-        self.deckMap[ cardList[6].name ] = self.pile6
-        self.deckMap[ cardList[7].name ] = self.pile7
-        self.deckMap[ cardList[8].name ] = self.pile8
-        self.deckMap[ cardList[9].name ] = self.pile9
-        self.deckMap[ cardList[0].name ] = self.pile0
+        self.deckMap[ cardList[1] ] = self.pile1
+        self.deckMap[ cardList[2] ] = self.pile2
+        self.deckMap[ cardList[3] ] = self.pile3
+        self.deckMap[ cardList[4] ] = self.pile4
+        self.deckMap[ cardList[5] ] = self.pile5
+        self.deckMap[ cardList[6] ] = self.pile6
+        self.deckMap[ cardList[7] ] = self.pile7
+        self.deckMap[ cardList[8] ] = self.pile8
+        self.deckMap[ cardList[9] ] = self.pile9
+        self.deckMap[ cardList[0] ] = self.pile0
 
         for i in range(10):
-            self.pile1.add( cardList[1] )
-            self.pile2.add( cardList[2] )
-            self.pile3.add( cardList[3] )
-            self.pile4.add( cardList[4] )
-            self.pile5.add( cardList[5] )
-            self.pile6.add( cardList[6] )
-            self.pile7.add( cardList[7] )
-            self.pile8.add( cardList[8] )
-            self.pile9.add( cardList[9] )
-            self.pile0.add( cardList[0] )
+            self.pile1.add( self.__factory.create( cardList[1] ))
+            self.pile2.add( self.__factory.create( cardList[2] ))
+            self.pile3.add( self.__factory.create( cardList[3] ))
+            self.pile4.add( self.__factory.create( cardList[4] ))
+            self.pile5.add( self.__factory.create( cardList[5] ))
+            self.pile6.add( self.__factory.create( cardList[6] ))
+            self.pile7.add( self.__factory.create( cardList[7] ))
+            self.pile8.add( self.__factory.create( cardList[8] ))
+            self.pile9.add( self.__factory.create( cardList[9] ))
+            self.pile0.add( self.__factory.create( cardList[0] ))
 
 
+# TO DO: now that I added CardFactory and all the cards are created
+# from there, this seems broken.  This should just be a shortcut
+# string key to a card name (string) as value.
 def setUpShortcuts():
 
     shortcutMap = {
@@ -1063,16 +1114,11 @@ def cardHelp( deckMap ):
             if deck.empty():
                 continue
 
-            # TO DO: this really needs fixing
-            # get the card
-            card = deck.deal()
+            card = deck.peek()
 
             if card.vp == i and card.vp:
                 vpCards.append( card )
                 
-            # now put it back, cringe
-            deck.add( card )
-
         # hack for gardens card
         for card in vpCards:
             if card.name != 'gardens':
@@ -1084,12 +1130,10 @@ def cardHelp( deckMap ):
     for deck in deckMap.values():
         if deck.empty():
             continue
-        card = deck.deal()
+
+        card = deck.peek()
         if card.name == 'gardens':
             print "%s (%d VP per 10 cards in deck)" % (card.displayName, card.vp )
-        # now put it back, cringe
-        deck.add( card )
-
         
     print
 
@@ -1106,16 +1150,11 @@ def cardHelp( deckMap ):
             if deck.empty():
                 continue
 
-            # TO DO: this really needs fixing
-            # get the card
-            card = deck.deal()
+            card = deck.peek()
 
             if card.cost == i and card.action:
                 cardChoices.append( card )
                 
-            # now put it back, cringe
-            deck.add( card )
-
         for thisCard in cardChoices:
             print "%s: %s" % ( thisCard.displayName, thisCard.helpText )
     
@@ -1148,15 +1187,11 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
             if deck.empty():
                 continue
 
-            # TO DO: this really needs fixing
-            # get the card
-            card = deck.deal()
+            card = deck.peek()
 
             if card.cost == i:
                 cardChoices.append( card.displayName )
                 
-            # now put it back, cringe
-            deck.add( card )
 
         if len( cardChoices ) > 0:
             if i == 1:
@@ -1341,85 +1376,77 @@ def handleAttacks( turn, player, shortcutMap, gameTable ):
 
 def selectKingdomCards():
 
+    
+    layoutNames = {}
+    deckLayouts = {}
+
+    with open("decks.txt", "r") as f:
+
+        # the lines in the file alternate between
+        # shortcut: deck layout name
+        # card1, card2, card3, etc...
+
+        layout = f.readline()
+        cards = f.readline()
+
+        while layout and cards:
+
+
+            ( shortcut, layout ) = layout.split(":")
+
+            layoutNames[ shortcut ] = layout.strip()
+
+            cards = cards.split(",")
+            cards = [ name.strip() for name in cards ]
+            deckLayouts[ shortcut ] = cards
+
+            layout = f.readline()
+            cards = f.readline()
+        
+
+    f.close()
+    #print "layoutNames: ", layoutNames
+    #print "deckLayouts: ", deckLayouts
+
+    # Let's just force the random layouts for now
+    # since this option cannot be configured in the decks.txt
+    # file. This will clobber any set using the shortcut "r"
+    layoutNames["r"] = "random cards, require moat"
+
+
     while True:
-        print "\nChoose a card set to play."
-        print "\n(b) beginners setup"
-        print "(f) feudal lords"
-        print "(t) mountainside villages"
-        print "(w) warring states"
-        print "(a) aristocracy"
-        print "(q) random set, require moat"
-        print "(r) random set"
-        print "(m) big money"
-        print "(i) interaction"
-        print "(d) size distortion"
-        print "(v) village square"
+        print "\nChoose a card set to play.\n"
+
+        for ( shortcut, layoutName ) in layoutNames.items():
+            print "(%s) %s" % ( shortcut, layoutName )
+
+        # A bit of a hack, but generate a new random set
+        # here each time.
+        deckLayouts["r"] = ["moat"]
+        deckLayouts["r"].extend( random.sample(
+                [ "cellar", "woodcutter", "workshop", "smithy", 
+                  "remodel", "market", "mine", "militia", 
+                  "village", "moneylender", "chancellor", 
+                  "thief", "witch", "festival", "laboratory", 
+                  "feast", "adventurer", "bureaucrat", "spy", 
+                  "library", "council room", "throne room",
+                  "gardens", "chapel" ], 9 ))        
+
 
         while True:
             choice = raw_input( "\nCard set> " )
-            if choice in [ 'b', 'm', 'i', 'd', 'v', 'f', 't', 'w', 'a', 'r', 'q' ]:
+            if choice in layoutNames:
                 break
             else:
                 print "Please choose a valid card set."
         
-
-        if choice == 'b':
-            cardSet = [ Moat(), Cellar(), Village(), Woodcutter(), Workshop(),
-                        Militia(), Smithy(), Remodel(), Market(), Mine() ]
-
-        if choice == 'm':
-            cardSet = [ Adventurer(), Bureaucrat(), Chancellor(), Chapel(),
-                        Feast(), Laboratory(), Market(), Mine(),
-                        Moneylender(), ThroneRoom(), ]
-
-        if choice == 'i':
-            cardSet = [ Bureaucrat(), Chancellor(), CouncilRoom(), Festival(),
-                        Library(), Militia(), Moat(), Spy(), Thief(),
-                        Village() ]
-
-        if choice == 'd':
-            cardSet = [ Cellar(), Chapel(), Feast(), Gardens(), Laboratory(),
-                        Thief(), Village(), Witch(), Woodcutter(), Workshop() ]
-
-        if choice == 'v':
-            cardSet = [ Bureaucrat(), Cellar(), Festival(), Library(),
-                        Market(), Remodel(), Smithy(), ThroneRoom(),
-                        Village(), Woodcutter() ]
-
-        # feudal lords (small-scale war)
-        if choice == 'f':
-            cardSet = [ Moat(), Woodcutter(), Cellar(), Feast(), Gardens(),
-                        Militia(), Remodel(), Market(), Mine(), ThroneRoom() ]
-
-        # mountainside villages (mythical)
-        if choice == 't':
-            cardSet = [ Village(), Witch(), Spy(), Mine(), Woodcutter(),
-                        Workshop(), Chapel(), Feast(), Festival(), Smithy() ]
-
-        # warring states (large-scale war)
-        if choice == 'w':
-            cardSet = [ Militia(), Moat(), Spy(), Thief(), Adventurer(),
-                        Village(), Moneylender(), Festival(), CouncilRoom(),
-                        Bureaucrat() ] 
-
-        # aristocracy (gentlemanly attacks)
-        if choice == 'a':
-            cardSet = [ Cellar(), Bureaucrat(), Moneylender(),
-                        Chancellor(), Remodel(), Gardens(), Library(),
-                        ThroneRoom(), Spy(), Market() ]
-            
-        if choice == 'r':
-            cardSet = random.sample( [ Moat(), Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Thief(), Witch(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens(), Chapel() ], 10 )
+        cardSet = deckLayouts[ choice ]
         
-        if choice == 'q':
-            cardSet = [ Moat() ]
-            randomSet = random.sample( [ Cellar(), Woodcutter(), Workshop(), Smithy(), Remodel(), Market(), Mine(), Militia(), Village(), Moneylender(), Chancellor(), Thief(), Witch(), Festival(), Laboratory(), Feast(), Adventurer(), Bureaucrat(), Spy(), Library(), CouncilRoom(), ThroneRoom(), Gardens(), Chapel() ], 9 )
-            cardSet.extend( randomSet )
-    
-        # display the card choices
+
+        # Display the card choices.
         cardNum = 0
         for card in cardSet:
-            print "%s " % ( card.displayName ),
+            print "%s " % ( card ),
             cardNum += 1
             if cardNum == 5:
                 print "\n",
@@ -1440,14 +1467,11 @@ def showTitleFromFile():
     print title
 
 
-
-
-
-
-
-
                                                    
 def main():
+
+    if colorama:
+        colorama.init()
 
     showTitleFromFile()
 
@@ -1468,7 +1492,8 @@ def main():
             break
 
     # set up the game decks
-    gameTable = Table( numPlayers )
+    cardFactory = CardFactory()
+    gameTable = Table( numPlayers, cardFactory )
 
     # choose kingdom cards to use
     cardSet = selectKingdomCards() 
