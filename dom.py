@@ -2,8 +2,6 @@
 
 # to do
 
-# buy menu, display how many buys are remaining
-
 # bug
 # this bug should probably trump (fix) any other existing bugs related to
 # the order that attacks are resolved.
@@ -36,11 +34,6 @@
 # best fix for this is likely just to count the number of cards a player has
 # in hand prior to resolving each attack.
 
-# bug
-# the fact that curses show up in the buy menu is probably wrong
-# because I think you are free to take a curse (for yourself) since
-# they cost 0.  This would be stupid.
-
 # refactor
 # play method on Card class takes too many arguments
 
@@ -50,17 +43,6 @@
 # feature request
 # change (c) count kingdom cards option to something like
 # (s) show kingdom cards (name, price, # card remaining)
-
-# feature request
-# on chancellor card, display how many cards are left in your deck
-# it might also be useful to make a count of all players card in all
-# their various decks available to any player, since this is legal anyway
-
-# feature request
-# game editor, allows you to create/save/edit/name starting decks
-# actually, the "editor" will be any editor you want
-# will just have a simple text file for loading all the saved
-# deck combos.
 
 # feature request
 # report first province bought might be cool
@@ -99,6 +81,7 @@ import random
 # we should just set the colored text strings if the import
 # succeeds and if it doesn't, I could print a message about
 # how the game looks prettier if colorama is installed
+
 try:
     import colorama
 except ImportError:
@@ -436,14 +419,20 @@ class Chancellor( Card ):
         print "Playing %s, +2 spend.\n" % self.name
 
         while True:
-            choice = raw_input( "Discard the remainder of your deck? (y/n) >" )
+            
+            if len( player.deck ) == 1:
+                prompt = "Discard the remainder of your deck? (%d card remains) (y/n) >" % ( len( player.deck ))
+            else:
+                prompt = "Discard the remainder of your deck? (%d cards remain) (y/n) >" % ( len( player.deck ))
+                
+            choice = raw_input( prompt )
             if choice in ["y", "n"]:
                 break
 
         if choice == "y":
-            print "Deck discarded."
             player.discard.extend( player.deck )
             player.deck = Deck()
+            print "Deck discarded."
         else:
             print "Keeping your deck in play."
 
@@ -1168,9 +1157,15 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
 
     if not freeCard:
         if ( player.spendBonus + player.hand.getCoin() ) == 1:
-            print "You have %d coin to spend.\n" % (player.spendBonus + player.hand.getCoin())
+            if player.numBuys == 1:
+                print "You have %d coin and %d buy remaining.\n" % (player.spendBonus + player.hand.getCoin(), player.numBuys )
+            else:
+                print "You have %d coin and %d buys remaining.\n" % (player.spendBonus + player.hand.getCoin(), player.numBuys )
         else:
-            print "You have %d coins to spend.\n" % (player.spendBonus + player.hand.getCoin())
+            if player.numBuys == 1:
+                print "You have %d coins and %d buy remaining.\n" % (player.spendBonus + player.hand.getCoin(), player.numBuys)
+            else:
+                print "You have %d coins and %d buys remaining.\n" % (player.spendBonus + player.hand.getCoin(), player.numBuys)
     else:
         print "Choose any card shown below."
         
@@ -1181,15 +1176,13 @@ def buyCard( deckMap, shortcutMap, player, maxSpend, freeCard = False ):
         # then print that as the shortcut option
         # still requires maintaining separate shortcutMap (for now)
         
-        # OMG this is an awful hack!
-        # makes doing a list comprehension nigh
         for deck in deckMap.values():
             if deck.empty():
                 continue
 
             card = deck.peek()
 
-            if card.cost == i:
+            if card.cost == i and card.name != "curse":
                 cardChoices.append( card.displayName )
                 
 
