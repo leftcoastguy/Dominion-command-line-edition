@@ -18,27 +18,27 @@
 # This is all going to be fixed in a refactor.
 
 # bug
-# throne room "forces" you to execute your second action even
-# if it is impossible.  For instance, if you throne room a mine
-# but you only have a single copper in your hand, you can never
-# resolve the second mine action.  This may have been a mine card
-# bug and it may be fixed now.  Need to test.
+# Mine card. If you bail from using you Mine after you
+# play it, you lose your action. I think this is a general
+# problem with the play methods. The main action routine
+# assumes that once you play a card, the card goes into
+# the inPlay deck and is removed from hand.
+
+# bug
+# throne room. If you play throne room during a turn but then
+# don't take anymore actions, the throne room is still active on
+# the next turn!
 
 # bug
 # workshop card
 # if you play this card and then decide not to buy anything
 # you gain another workshop card, one stays in your hand, the other
 # stays "inPlay" and eventually gets discarded
+# Feast card has the same problem.
 
 # bug
 # colorama escape codes shouldn't be used if colorama
 # module isn't present
-
-# bug
-# the game shouldn't simply crap out if the decks.txt file
-# is missing, a nice message at least.  Also, might like to
-# make the filename configurable in the code and I think I
-# now prefer the name layouts.txt to decks.txt
 
 # refactor
 # menu commands should be in a dict of command to functions
@@ -382,7 +382,11 @@ class Mine( Card ):
             return
             
         while True:
-            cardName = raw_input("Select a card to trash> ")
+            cardName = raw_input("Select a card to trash (q to quit)> ")
+            # One probably loses this action if they quit, but
+            # at least the game isn't dead in this case.
+            if cardName is "q":
+                break
             try:
                 trashedCard = supply.cardShortcuts[ cardName ]
             except:
@@ -403,7 +407,7 @@ class Mine( Card ):
                     print "%s mined %s to %s and gains it in hand." % ( player.name, trashedCard.displayName, mineCard.displayName )
                 break
             else:
-                print "The mine only operates on silver or gold in hand."
+                print "The mine only operates on copper or silver in hand."
 
 
 class Moneylender( Card ):
@@ -975,7 +979,7 @@ class CardSupply():
 
         if len(cardList) != 10:
             print "The chosen deck configuration must contain 10 cards."
-            print "There is most likely a problem with decks.txt"
+            print "This is most likely a problem with the decks layout file."
             raise SystemExit()
 
         for cardName in cardList:
@@ -983,7 +987,7 @@ class CardSupply():
                 card = self.__factory.create(cardName)
             except:
                 print "Got unknown card name %s." % cardName
-                print "There is most likely a problem with decks.txt"
+                print "This is most likely a problem with the decks layout file."
                 raise SystemExit()
 
             # There are always 10 of each action card
@@ -1291,47 +1295,49 @@ def handleAttacks( turn, player, supply ):
 
 def selectKingdomCards():
 
-    
+    DECK_LAYOUTS_FILE = "layouts.txt"
     layoutNames = {}
     deckLayouts = {}
 
-    with open("decks.txt", "r") as f:
-
-        # the lines in the file alternate between
-        # shortcut: deck layout name
-        # card1, card2, card3, etc...
-
-        layout = f.readline()
-        cards = f.readline()
-
-        while layout and cards:
-
-
-            ( shortcut, layout ) = layout.split(":")
-
-            layoutNames[ shortcut ] = layout.strip()
-
-            cards = cards.split(",")
-            cards = [ name.strip() for name in cards ]
-            deckLayouts[ shortcut ] = cards
+    try:
+        with open(DECK_LAYOUTS_FILE, "r") as f:
 
             layout = f.readline()
             cards = f.readline()
-        
 
-    f.close()
-    #print "layoutNames: ", layoutNames
-    #print "deckLayouts: ", deckLayouts
+            while layout and cards:
+
+
+                ( shortcut, layout ) = layout.split(":")
+                layoutNames[ shortcut ] = layout.strip()
+
+                cards = cards.split(",")
+                cards = [ name.strip() for name in cards ]
+                deckLayouts[ shortcut ] = cards
+
+                layout = f.readline()
+                cards = f.readline()
+
+    except IOError:
+        # The deck layout file is trivial to construct
+        # It is a text file with 2 lines per layout where the
+        # format is as follows:
+        # layout shortcut: layout name
+        # card1, card2, card3, ..., card10
+        # Each layout must contain 10 action cards and do not include
+        # VP cards, coins, or curse cards
+        
+        print "The file containing the deck layouts (%s) cannot be loaded." % DECK_LAYOUTS_FILE
+        
 
     # Let's just force the random layouts for now
     # since this option cannot be configured in the decks.txt
     # file. This will clobber any set using the shortcut "r"
     layoutNames["r"] = "random cards, require moat"
 
-
     while True:
         print "\nChoose a deck layout to play."
-        print "Create your own layouts by adding them to decks.txt\n"
+        print "Create your own layouts by adding them to %s\n" % DECK_LAYOUTS_FILE
 
         for ( shortcut, layoutName ) in layoutNames.items():
             print "(%s) %s" % ( shortcut, layoutName )
@@ -1357,9 +1363,9 @@ def selectKingdomCards():
                 print "Please choose a valid card set."
         
         cardSet = deckLayouts[ choice ]
-        
 
         # Display the card choices.
+        # Too bad these can't currently use colorama :(
         cardNum = 0
         for card in cardSet:
             print "%s " % ( card ),
@@ -1435,9 +1441,7 @@ def main():
         players[i].dealCards(5)
 
     isNewHand = True
-    vp = 0
-
-    p = 0  # start with first player
+    currentPlayerNumber = 0  # start with first player
 
     # now that there are actual card instances with play() methods
     # I need a magical container to pass in to contain all the
@@ -1448,10 +1452,10 @@ def main():
 
         # numPlayers is actually the number of players entered at beginning
         # p is the current player number starting with player 0
-        if p == turn.numPlayers:
-            p = 0
+        if currentPlayerNumber == turn.numPlayers:
+            currentPlayerNumber = 0
         
-        player = players[p]
+        player = players[currentPlayerNumber]
 
         # check for end game???
         gameOver = False
@@ -1497,13 +1501,11 @@ def main():
                 #for (cardName, count) in counts.items():
                 #    print "     %s %d" % ( cardName, count )
                     
-            print "*******************************"
             print "********** GAME OVER **********"
             for i in range( turn.numPlayers ):            
 
                 print "Player: %d *%s* VP: %d" % ( i + 1, players[i].name, players[i].deck.getVP())
             print "*******************************"
-            print "*******************************"                    
             break
 
         taskList = [ "+", "x", "h", "c" ]
@@ -1523,15 +1525,6 @@ def main():
                 if card.action:
                     player.numActions += 1
                     break
-
-            vp = 0
-            provinces = 0
-            for card in player.hand:
-                vp += card.vp
-                if card.name == "province":
-                    provinces += 1
-            vp += player.deck.getVP()
-            provinces += player.deck.getNumProvinces()
 
         # next action this hand (or new hand)
         # always message whose turn it is first
@@ -1627,7 +1620,6 @@ def main():
 
                     # resolve the card
                     cardInPlay.play( player, players, turn, supply )
-                    # decrement actions remaining
                     player.numActions -= 1
 
                     # remove this option from the menu
@@ -1641,7 +1633,8 @@ def main():
                     # resolve double play for Throne Room
                     # we toggle the bool off when the chain of
                     # throne rooms is finished being played
-                    if not turn.chainingThroneRooms and turn.numThroneRooms > 0:
+                    if (not turn.chainingThroneRooms and
+                        turn.numThroneRooms > 0):
                         turn.cardsToDeal = 0
                         turn.numThroneRooms -= 1
 
@@ -1650,7 +1643,6 @@ def main():
                         # increment or decrement numActions for this one
                         print "\nThrone Room active, re-playing %s" % cardInPlay.displayName
                         cardInPlay.play( player, players, turn, supply )
-                        
                         player.dealCards( turn.cardsToDeal )
 
         # *******************************************************
@@ -1659,8 +1651,8 @@ def main():
             # if a feast was played, the card gets trashed
             # after it's played
             try:
-                while player.inPlay.contains( supply.cardShortcuts[ "feast" ] ):
-                    player.inPlay.remove( supply.cardShortcuts[ "feast" ] )
+                while player.inPlay.contains( supply.cardShortcuts["feast"] ):
+                    player.inPlay.remove( supply.cardShortcuts["feast"] )
             except KeyError:
                 pass
                 
@@ -1688,7 +1680,7 @@ def main():
             player.dealCards(5)
 
             # next players turn now
-            p += 1
+            currentPlayerNumber += 1
 
 
 if __name__ == "__main__":
