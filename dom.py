@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 # to do
+# check against PEP8 for Python style
 
 # bug
 # this bug should probably trump (fix) any other existing bugs related to
@@ -17,7 +18,8 @@
 # throne room "forces" you to execute your second action even
 # if it is impossible.  For instance, if you throne room a mine
 # but you only have a single copper in your hand, you can never
-# resolve the second mine action.
+# resolve the second mine action.  This may have been a mine card
+# bug and it may be fixed now.  Need to test.
 
 # bug
 # in a 3-4 player game, multiple attacks are not always handled
@@ -34,8 +36,24 @@
 # best fix for this is likely just to count the number of cards a player has
 # in hand prior to resolving each attack.
 
+# bug
+# workshop card
+# if you play this card and then decide not to buy anything
+# you gain another workshop card, one stays in your hand, the other
+# stays "inPlay" and eventually gets discarded
+
 # refactor
 # play method on Card class takes too many arguments
+
+# refactor
+# the shortcutMap is problematic, for one thing it really needs to be
+# global, since it's used everywhere. What about pushing the
+# shortcuts into the card instances? I don't like this idea.
+# What about encapsulating the shortcut map inside the Table or deckMap
+# object?  It makes sense that Table is the authoritative place to
+# check validity of a card shortcut.  So really this is about
+# refactoring the Table object, because the current design of that is
+# whacked.
 
 # refactor
 # menu commands should be in a dict of command to functions
@@ -146,7 +164,6 @@ class Deck:
     def remove( self, card ):
         self.__cards.remove( card )
 
-    # might be better to write an == operator for card classes
     def contains( self, card ):
         for c in self.__cards:
             if c.name == card.name:
@@ -276,6 +293,7 @@ class Workshop( Card ):
         print "Playing %s.\n" % self.name
         # gain any card costing up to 4
         # if player changes mind about buy, then don't use up this card
+        # this creates a duplicate card, oooops
         if not buyCard( deckMap, shortcutMap, player, 4, True ):
             player.hand.add( Workshop() )
             player.numActions += 1
@@ -508,7 +526,7 @@ class Bureaucrat( Card ):
         Card.__init__( self, "bureaucrat", "(b)ureaucrat", 4, 0, True, 0, "Gain a silver on top of your deck. Each other player reveals a victory card from their hand and puts it on top of their deck." )
 
     def play( self, player, players, turn, shortcutMap, deckMap ):
-        print "Playing %s. A new %s added to discard pile.\n" % ( self.name, shortcutMap[ "silver" ].displayName)
+        print "Playing %s. Gain a %s on top of your deck.\n" % ( self.name, shortcutMap[ "silver" ].displayName)
         player.deck.push( shortcutMap[ "silver" ] )
         turn.attacksInPlay.append( Attack( self.name, player.name ))
 
@@ -917,98 +935,70 @@ class Table():
     def __init__( self, numPlayers, cardFactory ):
         self.__numPlayers = numPlayers
         self.__factory = cardFactory
-        self.pile1 = Deck()
-        self.pile2 = Deck()
-        self.pile3 = Deck()
-        self.pile4 = Deck()
-        self.pile5 = Deck()
-        self.pile6 = Deck()
-        self.pile7 = Deck()
-        self.pile8 = Deck()
-        self.pile9 = Deck()
-        self.pile0 = Deck()
-        
-        self.pileEstate = Deck()
-        self.pileDuchy = Deck()
-        self.pileProvince = Deck()
-        self.pileCurse = Deck()
-        
-        self.pileCopper = Deck()
-        self.pileSilver = Deck()
-        self.pileGold = Deck()
-        
-        self.deckMap = {}
 
-        # setup method
-        self.__setupPiles()
+        # start with only the cards that appear in every game
+        self.deckMap = { "estate": Deck(),
+                         "duchy": Deck(),
+                         "province": Deck(),
+                         "copper": Deck(),
+                         "silver": Deck(),
+                         "gold": Deck() }
 
-    # decks is just a list of card instances  [ Moat(), Cellar(), Moneylender() ]
+        self.__setup()
 
-    def __setupPiles( self ):
 
-        # the deckMap maps user-input strings (ie. card names)
-        # to actual decks
-        # also, a handle to all the deck piles
-        self.deckMap = { "copper" : self.pileCopper,
-                         "silver" : self.pileSilver,
-                         "gold" : self.pileGold,
-                         "estate" : self.pileEstate,
-                         "duchy" : self.pileDuchy,
-                         "province" : self.pileProvince,
-                         "curse" : self.pileCurse }
+    def __setup( self ):
 
         if self.__numPlayers <= 2:
-            cardsInDeck = 8
+            numVpCards = 8
         else:
-            cardsInDeck = 12
+            numVpCards = 12
 
-        # set up variable number of vp cards
-        for i in range(cardsInDeck):
-            self.pileEstate.add( self.__factory.create( "estate" ))
-            self.pileDuchy.add( self.__factory.create( "duchy" ))
-            self.pileProvince.add( self.__factory.create( "province" ))
+        # set up variable number of VP cards
+        for i in range(numVpCards):
+            self.deckMap["estate"].add( self.__factory.create("estate") )
+            self.deckMap["duchy"].add( self.__factory.create("duchy") )
+            self.deckMap["province"].add( self.__factory.create("province") )
 
-        for i in range(60):    
-            self.pileCopper.add( self.__factory.create( "copper" ))
+        for i in range(60):
+            self.deckMap["copper"].add( self.__factory.create("copper") )
 
-        for i in range(40):    
-            self.pileSilver.add( self.__factory.create( "silver" ))
+        for i in range(40):
+            self.deckMap["silver"].add( self.__factory.create("silver") )
 
         for i in range(30):
-            self.pileCurse.add( self.__factory.create( "curse" ))
-            self.pileGold.add( self.__factory.create( "gold" ))
+            self.deckMap["gold"].add( self.__factory.create("gold") )
 
 
     # if this method is not called independently at setup time
     # there will be no kingdom cards for the game to use!
-    # cardList used to be a list of kingdom card instances
-    # but refactored to now just contain card names (strings)
+    # cardList is just a list of card names (strings)
     def setKingdomCards( self, cardList ):
-        
-        # Is this Python?
-        self.deckMap[ cardList[1] ] = self.pile1
-        self.deckMap[ cardList[2] ] = self.pile2
-        self.deckMap[ cardList[3] ] = self.pile3
-        self.deckMap[ cardList[4] ] = self.pile4
-        self.deckMap[ cardList[5] ] = self.pile5
-        self.deckMap[ cardList[6] ] = self.pile6
-        self.deckMap[ cardList[7] ] = self.pile7
-        self.deckMap[ cardList[8] ] = self.pile8
-        self.deckMap[ cardList[9] ] = self.pile9
-        self.deckMap[ cardList[0] ] = self.pile0
 
-        for i in range(10):
-            self.pile1.add( self.__factory.create( cardList[1] ))
-            self.pile2.add( self.__factory.create( cardList[2] ))
-            self.pile3.add( self.__factory.create( cardList[3] ))
-            self.pile4.add( self.__factory.create( cardList[4] ))
-            self.pile5.add( self.__factory.create( cardList[5] ))
-            self.pile6.add( self.__factory.create( cardList[6] ))
-            self.pile7.add( self.__factory.create( cardList[7] ))
-            self.pile8.add( self.__factory.create( cardList[8] ))
-            self.pile9.add( self.__factory.create( cardList[9] ))
-            self.pile0.add( self.__factory.create( cardList[0] ))
+        if len(cardList) != 10:
+            print "The chosen deck configuration must contain 10 cards."
+            print "There is most likely a problem with decks.txt"
+            raise SystemExit()
 
+        for cardName in cardList:
+            try:
+                card = self.__factory.create(cardName)
+            except:
+                print "Got unknown card name %s." % cardName
+                print "The game is not setup correctly."
+                raise SystemExit()
+
+            # There are always 10 of each action card
+            self.deckMap[cardName] = Deck()
+            for i in range(10):
+                self.deckMap[cardName].add( card )
+
+        # Auto-magically add the Curse card if we require it
+        # (In the basic game set, only the Witch uses Curse)
+        if "witch" in cardList:
+            for i in range(30):
+                self.deckMap[ "curse" ].add( self.__factory.create("curse"))
+                    
 
 # TO DO: now that I added CardFactory and all the cards are created
 # from there, this seems broken.  This should just be a shortcut
