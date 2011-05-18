@@ -34,6 +34,12 @@
 # colorama escape codes shouldn't be used if colorama
 # module isn't present
 
+# bug
+# the game shouldn't simply crap out if the decks.txt file
+# is missing, a nice message at least.  Also, might like to
+# make the filename configurable in the code and I think I
+# now prefer the name layouts.txt to decks.txt
+
 # refactor
 # menu commands should be in a dict of command to functions
 
@@ -1069,7 +1075,7 @@ def cardHelp( decks ):
 # return whether or not someone bought a card
 def buyCard( supply, player, maxSpend, freeCard = False ):
 
-    print "Let's go shopping!\n"
+    print "\nLet's go shopping!\n"
 
     if not freeCard:
         if ( player.spendBonus + player.hand.getCoin() ) == 1:
@@ -1324,7 +1330,8 @@ def selectKingdomCards():
 
 
     while True:
-        print "\nChoose a card set to play.\n"
+        print "\nChoose a deck layout to play."
+        print "Create your own layouts by adding them to decks.txt\n"
 
         for ( shortcut, layoutName ) in layoutNames.items():
             print "(%s) %s" % ( shortcut, layoutName )
