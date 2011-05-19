@@ -5,12 +5,6 @@
 # comment style s/b consistent
 
 # bug
-# when you buy a card everything works correctly
-# however, even though you spend coin, the coin
-# still shows in your hand and the spend: x
-# text still shows those coins too!
-
-# bug
 # attacks are generally broken in 3-4 player games
 # if 2 players play successive militia cards
 # the 3rd player has to discard 4 cards!
@@ -1305,13 +1299,12 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
 
         # try to spend gold, then silver, then copper
         cardsToRemove = [] # coin to remove from hand        
-        for coin in ["gold", "silver", "copper"]:
-            
-            for moneyCard in player.hand:
-                if moneyCard.name == ( coin and
-                                       moneyCard.value <= totalToDeduct):
-                    totalToDeduct -= moneyCard.value
-                    cardsToRemove.append( moneyCard )
+
+        for moneyCard in player.hand:
+            if (moneyCard.name in ["gold", "silver", "copper"] and
+                moneyCard.value <= totalToDeduct):
+                totalToDeduct -= moneyCard.value
+                cardsToRemove.append( moneyCard )
 
         # discard coin
         for spentCard in cardsToRemove:
@@ -1647,7 +1640,9 @@ def main():
 
         # next action same hand (or new hand)
         # always message whose turn it is first
-        print "\n%s, your turn.  (%d/%d)\n" % ( player.name, player.deck.getNumShuffles(), player.numHands )
+        print "\n%s, your turn.  (%d/%d)\n" % \
+              (player.name, player.deck.getNumShuffles(), player.numHands)
+        
         print "Hand: %s" % (player.hand)
         
         if player.spendBonus + player.hand.getCoin() == 1:
