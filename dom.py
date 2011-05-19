@@ -246,7 +246,7 @@ class Moat( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s, +2 cards." % self.name
-        turn.cardsToDeal = 2        
+        player.drawCards( 2 )
 
 
 class Cellar( Card ):
@@ -259,7 +259,7 @@ class Cellar( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s, +1 action." % self.name
         player.numActions += 1
-
+        numCardsToDraw = 0
         while True:
             print "\nhand: %s" % player.hand
             discardCard = raw_input("Card name to discard (q to quit)> ")
@@ -275,9 +275,11 @@ class Cellar( Card ):
                 
             if player.hand.contains( cardToRemove ):
                 print "Discarded %s." % cardToRemove.displayName
-                turn.cardsToDeal += 1
+                numCardsToDraw += 1
                 player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
+
+        player.drawCards( numCardsToDraw )
         
 
 class Village( Card ):
@@ -288,8 +290,8 @@ class Village( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s, +2 actions, +1 card.\n" % self.name
+        player.drawCards( 1 )
         player.numActions += 2
-        turn.cardsToDeal = 1
 
     
 class Workshop( Card ):
@@ -330,7 +332,7 @@ class Smithy( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s, +3 cards.\n" % self.name
-        turn.cardsToDeal = 3
+        player.drawCards( 3 )
 
         
 class Remodel( Card ):
@@ -377,7 +379,7 @@ class Market( Card ):
         player.numActions += 1
         player.numBuys += 1
         player.spendBonus += 1
-        turn.cardsToDeal = 1
+        player.drawCards( 1 )
 
 
 class Mine( Card ):
@@ -524,7 +526,7 @@ class Laboratory( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s, +1 action, +2 cards.\n" % self.name        
         player.numActions += 1
-        turn.cardsToDeal = 2
+        player.drawCards( 2 )
 
 
 class Feast( Card ):
@@ -601,7 +603,7 @@ class Witch( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing witch,  +2 cards."
-        turn.cardsToDeal = 2
+        player.drawCards( 2 )
         turn.attacksInPlay.append( Attack( self.name, player.name ))
 
 
@@ -620,7 +622,7 @@ class Spy( Card ):
         # here because if we do, they will put back the card that
         # they are about to deal, rather than dealing and peaking
         # at their *next* card (and potentially putting that back).
-        player.dealCards( 1 )
+        player.drawCards( 1 )
         player.numActions += 1
 
         # I hate to do this in the card itself, because now it requires
@@ -858,7 +860,7 @@ class CouncilRoom( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s, +4 cards, +1 buy.\n" % self.name
-        turn.cardsToDeal = 4
+        player.drawCards( 4 )
         player.numBuys += 1
         turn.attacksInPlay.append( Attack( self.name, player.name ))
 
@@ -1023,8 +1025,8 @@ class Player:
         self.numActions = 0
         self.numBuys = 0
 
-    def dealCards( self, numCards ):
-        
+    def drawCards( self, numCards, silent = False ):
+
         for i in range( numCards ):
             try:
                 card = self.deck.deal()
@@ -1037,11 +1039,12 @@ class Player:
                 card = self.deck.deal()
                 
             self.hand.add( card )
+            if not silent:
+                print "%s draws a %s" % (self.name, card.displayName)
 
 
 class TurnState():
     def __init__( self, numPlayers ):
-        self.cardsToDeal = 0
         self.attacksInPlay = []
         self.numPlayers = numPlayers
         self.numThroneRooms = 0  # num consecutive throne rooms in play
@@ -1404,8 +1407,8 @@ def handleAttacks( turn, player, supply ):
             if attack.attackName == "council room":
                 print "%s's played a council room." % attack.playerName
                 print "Draw another card."
-                player.dealCards( 1 )
-                print "\nHand: %s" % (player.hand)
+                player.drawCards( 1 )
+                print "\nHand: %s" % player.hand
 
 
 def selectKingdomCards():
@@ -1553,7 +1556,7 @@ def main():
                                          len( players[i].deck))
 
         # deal me a new one partna
-        players[i].dealCards( 5 )
+        players[i].drawCards( 5, silent = True )
 
     isNewHand = True
     currentPlayerNumber = 0
@@ -1715,8 +1718,6 @@ def main():
             if not player.hand.contains( card ):
                 print "You don't have that card in hand."
             else:
-                # reset cardsToDeal every action
-                turn.cardsToDeal = 0
 
                 # get the card from hand so it can't be used
                 # again during this turn
@@ -1746,15 +1747,11 @@ def main():
                         if "a" in taskList:
                             taskList.remove( "a" )
 
-                    # put new cards into hand
-                    player.dealCards( turn.cardsToDeal )
-
                     # resolve double play for Throne Room
                     # we toggle the bool off when the chain of
                     # throne rooms is finished being played
                     if (not turn.chainingThroneRooms and
                         turn.numThroneRooms > 0):
-                        turn.cardsToDeal = 0
                         turn.numThroneRooms -= 1
 
                         # do it again
@@ -1763,7 +1760,6 @@ def main():
                         print "\nThrone Room active, re-playing %s" % \
                               cardInPlay.displayName
                         cardInPlay.play( player, players, turn, supply )
-                        player.dealCards( turn.cardsToDeal )
 
         # *******************************************************
             
@@ -1797,7 +1793,7 @@ def main():
             player.hand = Deck()
 
             # deal me another
-            player.dealCards( 5 )
+            player.drawCards( 5, silent = True )
 
             # next players turn now
             currentPlayerNumber += 1
