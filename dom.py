@@ -5,6 +5,12 @@
 # comment style s/b consistent
 
 # bug
+# when you buy a card everything works correctly
+# however, even though you spend coin, the coin
+# still shows in your hand and the spend: x
+# text still shows those coins too!
+
+# bug
 # attacks are generally broken in 3-4 player games
 # if 2 players play successive militia cards
 # the 3rd player has to discard 4 cards!
@@ -1333,19 +1339,22 @@ def handleAttacks( turn, player, supply ):
 
         for attack in turn.attacksInPlay:
             if attack.attackName == "militia":
-                print "%s's militia card is in play." % attack.playerName
+                print "\n%s's militia card is in play." % attack.playerName
 
                 if player.hand.contains( supply.cardShortcuts["moat"] ):
                     print "You deflect the attack with the moat.\n"
+
+                elif len( player.hand ) <= 3:
+                    print "You have 3 or less cards in hand already."
+
                 else:
-                    print "You must discard 2 cards now.\n"
+                    print "You must discard down to 3 card.\n"
 
-                    numDiscarded = 0
                     while True:
-                        print "\nhand (%d): %s" % (player.numHands,
-                                                   player.hand)
+                        numCardsInHand = len( player.hand )
+                        print "\nHand: %s" % player.hand
 
-                        if numDiscarded >= 2:
+                        if numCardsInHand == 3:
                             break
 
                         cardName = raw_input("Card name to discard> ")
@@ -1357,11 +1366,10 @@ def handleAttacks( turn, player, supply ):
                             continue
 
                         if player.hand.contains( discardCard ):
-                            numDiscarded += 1
                             player.hand.remove( discardCard )
                             player.discard.add( discardCard )
-
-                    print "Hand: %s" % (player.hand)
+                        else:
+                            print "Try discarding something from your hand!"
 
             if attack.attackName == "bureaucrat":
                 print "%s's bureaucrat card is in play." % attack.playerName
@@ -1666,6 +1674,8 @@ def main():
                 if card.action:
                     taskList += "a"
                     break
+
+        print
             
         if "a" in taskList:
             print "(a) action"
