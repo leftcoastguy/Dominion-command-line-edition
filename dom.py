@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 # to do
-# check against PEP8 for Python style
+# python style comments for classes/methods
+# comment style s/b consistent
 
 # bug
 # attacks are generally broken in 3-4 player games
@@ -96,14 +97,12 @@ class Deck:
         self.__currentCard = 0 # used for iterator only
         self.__numShuffles = 0
 
-    def add( self, card ):
-        
+    def add( self, card ):        
         if card is None:
             print "WARN: adding None card to Deck()"
         self.__cards.append( card )
 
     def deal( self ):
-
         if len( self.__cards ) == 0:
             raise ValueError
 
@@ -112,6 +111,7 @@ class Deck:
     def peek( self ):
         if len( self.__cards ) == 0:
             raise ValueError
+        
         return self.__cards[0]
 
     def push( self, card ):
@@ -125,24 +125,29 @@ class Deck:
         self.__numShuffles += 1
 
     def getNumShuffles( self ):
+        
         return self.__numShuffles
 
     def getCoin( self ):
         coin = 0
         for card in self.__cards:
             coin += card.value
+
         return coin
 
     def __str__( self ):
         s = ""
         for card in self.__cards:
             s += ( "%s " % card )
+
         return s
 
     def __len__( self ):
+
         return len( self.__cards )
 
     def empty( self ):
+
         return ( len( self.__cards ) < 1 )
     
     def remove( self, card ):
@@ -152,6 +157,7 @@ class Deck:
         for c in self.__cards:
             if c.name == card.name:
                 return True
+
         return False
 
     def getVP( self ):
@@ -181,6 +187,7 @@ class Deck:
             self.__currentCard = 0
             raise StopIteration
         self.__currentCard += 1
+
         return card
 
 
@@ -204,12 +211,15 @@ class Card:
         self.helpText = helpText
 
     def __repr__( self ):
+
         return "%s" % self.displayName
 
     def __eq__( self, other ):
+
         return self.name == other.name
 
     def __ne__( self, other ):
+
         return self.name != other.name
 
     def play( self, player, players, turn, supply ):
@@ -247,7 +257,6 @@ class Cellar( Card ):
                        "+1 card per card discarded." )
 
     def play( self, player, players, turn, supply ):
-
         print "Playing %s, +1 action." % self.name
         player.numActions += 1
 
@@ -291,6 +300,7 @@ class Workshop( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name
+
         # gain any card costing up to 4
         # if player changes mind about buy, then don't use up this card
         # this creates a duplicate card, oooops
@@ -413,7 +423,9 @@ class Mine( Card ):
                 player.hand.contains( trashedCard )):
 
                 player.hand.remove( trashedCard )
+
                 if trashedCard.name == "copper":
+
                     # TO DO: deck could be empty
                     mineCard = supply.decks["silver"].deal()
                     player.hand.add( mineCard )
@@ -423,6 +435,7 @@ class Mine( Card ):
                            mineCard.displayName)
 
                 if trashedCard.name == "silver":
+
                     # TO DO: deck could be empty                    
                     mineCard = supply.decks["gold"].deal()
                     player.hand.add( mineCard )
@@ -431,6 +444,7 @@ class Mine( Card ):
                            trashedCard.displayName,
                            mineCard.displayName)
                 break
+            
             else:
                 print "The mine only operates on copper or silver in hand."
 
@@ -538,7 +552,7 @@ class Adventurer( Card ):
         print "Playing %s.\n" % self.name
 
         # if the player somehow doesn't have 2 treasure cards
-        # in their deck (unlikely), prevent an endless loop?
+        # in their deck (unlikely), this is an endless loop, oops
         treasureCards = 0
         
         while treasureCards < 2:
@@ -952,40 +966,40 @@ class Gold( Card ):
 
 class CardFactory():
     def __init__( self ):
-        self.__cards = { "estate": Estate(),
-                         "duchy": Duchy(),
-                         "province": Province(),
-                         "gardens": Gardens(),
-                         "gold": Gold(),
-                         "silver": Silver(),
-                         "copper": Copper(),
-                         "curse": Curse(),
-                         "cellar": Cellar(),
-                         "chapel": Chapel(),
-                         "moat": Moat(),
-                         "chancellor": Chancellor(),
-                         "village": Village(),
-                         "woodcutter": Woodcutter(),
-                         "workshop": Workshop(),
-                         "bureaucrat": Bureaucrat(),
-                         "feast": Feast(),
-                         "militia": Militia(),
-                         "moneylender": Moneylender(),
-                         "remodel": Remodel(),
-                         "smithy": Smithy(),
-                         "spy": Spy(),
-                         "thief": Thief(),
-                         "throne room": ThroneRoom(),
-                         "gardens": Gardens(),
-                         "council room": CouncilRoom(),
-                         "festival": Festival(),
-                         "laboratory": Laboratory(),
-                         "library": Library(),
-                         "market": Market(),
-                         "mine": Mine(),
-                         "witch": Witch(),
-                         "adventurer": Adventurer() 
-                         }
+        self.__cards = {"estate": Estate(),
+                        "duchy": Duchy(),
+                        "province": Province(),
+                        "gardens": Gardens(),
+                        "gold": Gold(),
+                        "silver": Silver(),
+                        "copper": Copper(),
+                        "curse": Curse(),
+                        "cellar": Cellar(),
+                        "chapel": Chapel(),
+                        "moat": Moat(),
+                        "chancellor": Chancellor(),
+                        "village": Village(),
+                        "woodcutter": Woodcutter(),
+                        "workshop": Workshop(),
+                        "bureaucrat": Bureaucrat(),
+                        "feast": Feast(),
+                        "militia": Militia(),
+                        "moneylender": Moneylender(),
+                        "remodel": Remodel(),
+                        "smithy": Smithy(),
+                        "spy": Spy(),
+                        "thief": Thief(),
+                        "throne room": ThroneRoom(),
+                        "gardens": Gardens(),
+                        "council room": CouncilRoom(),
+                        "festival": Festival(),
+                        "laboratory": Laboratory(),
+                        "library": Library(),
+                        "market": Market(),
+                        "mine": Mine(),
+                        "witch": Witch(),
+                        "adventurer": Adventurer() 
+                        }
 
     def create( self, cardName ):
         card = None
@@ -993,6 +1007,7 @@ class CardFactory():
             card = self.__cards[cardName]
         except KeyError:
             print "CardFactory.create( cardName ) got unknown card name."
+
         return card
         
 
