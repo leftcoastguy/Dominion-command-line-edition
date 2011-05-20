@@ -263,7 +263,7 @@ class Cellar( Card ):
                 break
 
             try:
-                cardToRemove = supply.cardShortcuts[discardCard]
+                cardToRemove = supply.shortcut[discardCard]
             except KeyError:
                 print "\nHuh?"
                 continue
@@ -349,7 +349,7 @@ class Remodel( Card ):
                 raise CanceledAction()
 
             try:
-                trashedCard = supply.cardShortcuts[choice]
+                trashedCard = supply.shortcut[choice]
             except KeyError:
                 print "Huh?"
                 continue
@@ -399,7 +399,7 @@ class Mine( Card ):
 
         validAction = False
         for cardName in trashList:
-            if player.hand.contains( supply.cardShortcuts[cardName] ):
+            if player.hand.contains( supply.shortcut[cardName] ):
                 validAction = True
 
         if not validAction:
@@ -415,7 +415,7 @@ class Mine( Card ):
                 raise CanceledAction()
 
             try:
-                trashedCard = supply.cardShortcuts[cardName]
+                trashedCard = supply.shortcut[cardName]
             except KeyError:
                 print "Please choose either copper or silver." % cardName
                 continue
@@ -459,7 +459,7 @@ class Moneylender( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name
 
-        copperCard = supply.cardShortcuts["copper"]
+        copperCard = supply.shortcut["copper"]
         if not player.hand.contains( copperCard ):
             print "\nYou have no copper in hand."
             raise IllegalAction()
@@ -588,7 +588,7 @@ class Bureaucrat( Card ):
         print "\n%s plays %s" % \
               (player.name, self.displayName)
 
-        silver = supply.cardShortcuts["silver"]
+        silver = supply.shortcut["silver"]
         player.deck.push( silver )
         print "\nA %s added on top of %s's deck.\n" % \
               (silver.displayName, player.name)
@@ -598,13 +598,7 @@ class Bureaucrat( Card ):
             if other.name == player.name:
                 continue
 
-            moat = None
-            try:
-                moat = supply.cardShortcuts["moat"]
-            except KeyError:
-                pass
-            
-            if other.hand.contains( moat ):
+            if other.hand.contains( supply.shortcut.get( "moat" ) ):
                 print "%s deflects the attack with a moat." % \
                       other.name
             else:
@@ -640,13 +634,7 @@ class Witch( Card ):
             if other.name == player.name:
                 continue
 
-            moat = None
-            try:
-                moat = supply.cardShortcuts["moat"]
-            except KeyError:
-                pass            
-            
-            if other.hand.contains( moat ):
+            if other.hand.contains( supply.shortcut.get( "maot" ) ):
                 print "%s deflects the attack with a moat.\n" % other.name
             else:
                 newCurse = None
@@ -684,15 +672,7 @@ class Spy( Card ):
             if other.name == player.name:
                 isPlayer = True
         
-            # first check to see if other has a moat in hand
-            if not isPlayer:
-                moat = None
-                try:
-                    moat = supply.cardShortcuts["moat"]
-                except KeyError:
-                    pass
-                
-                if other.hand.contains( moat ):
+                if other.hand.contains( supply.shortcut.get( "moat" ) ):
                     print "%s deflects the attack with a moat." % \
                           (other.name)
                     continue
@@ -750,14 +730,7 @@ class Thief( Card ):
             if other.name == player.name:
                 continue
 
-            # first check to see if other has a moat in hand
-            moat = None
-            try:
-                moat = supply.cardShortcuts["moat"]
-            except KeyError:
-                pass
-            
-            if other.hand.contains( moat ):
+            if other.hand.contains( supply.shortcut.get( "moat" ) ):
                 print "\n%s deflects the attack with a moat." % other.name
                 continue
 
@@ -826,7 +799,7 @@ class Thief( Card ):
 
                     # else, argh, get the shortcut
                     try:
-                        theCard = supply.cardShortcuts[whichOne]
+                        theCard = supply.shortcut[whichOne]
                     except KeyError:
                         print "Huh?"
                         continue
@@ -968,7 +941,7 @@ class Chapel( Card ):
                 break
             
             try:
-                trashedCard = supply.cardShortcuts[choice]
+                trashedCard = supply.shortcut[choice]
             except KeyError:
                 print "Huh?"
                 continue
@@ -1151,7 +1124,7 @@ class CardSupply():
                       "silver": Deck(),
                       "gold": Deck()}
 
-        self.cardShortcuts = {}
+        self.shortcut = {}
         self.__setup()
 
     def __setup( self ):
@@ -1218,8 +1191,8 @@ class CardSupply():
         # Not sure I like these values as card instances.
         for deck in self.decks.values():
             card = deck.peek()
-            self.cardShortcuts[card.name] = card
-            self.cardShortcuts[card.shortcut] = card
+            self.shortcut[card.name] = card
+            self.shortcut[card.shortcut] = card
 
 
 # Useful debugging function
@@ -1336,7 +1309,7 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
         if cardName == "q":
             break
         try:
-            card = supply.cardShortcuts[cardName]
+            card = supply.shortcut[cardName]
             break
         except KeyError:
             print "\nThat card name is not valid."
@@ -1424,7 +1397,7 @@ def handleAttacks( turn, player, supply ):
             if attack.attackName == "militia":
                 print "\n%s's militia card is in play." % attack.playerName
 
-                if player.hand.contains( supply.cardShortcuts["moat"] ):
+                if player.hand.contains( supply.shortcut["moat"] ):
                     print "You deflect the attack with the moat.\n"
 
                 elif len( player.hand ) <= 3:
@@ -1443,7 +1416,7 @@ def handleAttacks( turn, player, supply ):
                         cardName = raw_input("Card name to discard> ")
                         
                         try:
-                            discardCard = supply.cardShortcuts[cardName]
+                            discardCard = supply.shortcut[cardName]
                         except KeyError:
                             print "Huh?"
                             continue
@@ -1753,7 +1726,7 @@ def main():
                 card = raw_input("\nCard to play> ")
                 # first see if they entered a shortcut
                 try:
-                    card = supply.cardShortcuts[card]
+                    card = supply.shortcut[card]
                     break
                 except KeyError:
                     print "Huh?"
@@ -1820,8 +1793,8 @@ def main():
         if task == "x":
             # Feast gets trashed after succesfully played
             try:
-                while player.inPlay.contains( supply.cardShortcuts["feast"] ):
-                    player.inPlay.remove( supply.cardShortcuts["feast"] )
+                while player.inPlay.contains( supply.shortcut["feast"] ):
+                    player.inPlay.remove( supply.shortcut["feast"] )
             except KeyError:
                 pass
                 
