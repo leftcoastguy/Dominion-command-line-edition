@@ -1,13 +1,75 @@
 #!/usr/bin/python
 
+"""
+dom.py: A command-line game based on the card game Dominion.
+Author: Matt Brown (leftcoastguy@gmail.com)
+
+
+Dominion is a deck building game, where players buy cards in an
+attempt to obtain the most victory points by game end.
+
+Victory points are represented by collecting estates (1 vp each),
+duchys (3 vp each) and provinces (6 vp each).
+
+The money supply in the game is represented by copper cards (1
+coin), silver cards (2 coins), and gold cards (3 coins).  Players
+use coin throughout the game to purhcase additional cards from
+the supply.
+
+Apart from coin and victory point cards, there are 10 action
+cards players may purchase during the game.  In the base set of
+Dominion, there are a total of 24 action cards available, however
+a game only contains a selection of 10 of these. Action cards
+allow players to take an action on their turn, which may include
+attacking the other players in the game.
+
+Each player starts the game with a deck of 10 cards containing
+7 coppers and 3 estates. Players begin by shuffling their decks
+and dealing themselves a hand of 5 cards.
+
+A players turn generally consists of 3 phases, which must be
+completed in order.  The phases are Action, Buy, and Clean-up
+(or ABC, for short). Players may first play and resolve an action
+card.  Next, players may use any coin in their hand (or bonus coins
+from actions taken) to purchase a new card.  Then the clean-up
+phase happens, but this is all magically done by the computer so
+don't worry about it.
+
+Since players do not begin the game with any action cards, the
+first two hands of every game only involves buying cards.
+Each player has their own separate discards pile and any cards
+purchased go immediately into that players discard pile.  When a
+player exhausts the deck they are playing from, they shuffle their
+discard pile and the shuffled cards become their new deck to play
+from. (Note: Players might exhaust their deck *while* they are
+playing their action cards.  When this occurs, the cards that are
+in play remain in play and players only shuffle their discard pile.
+Only after a player has finished playing all their actions are the
+cards in play discarded.  Again, this isn't something to worry
+about too much, the computer magically takes care of all this.)
+
+There are two conditions which end the game. When players have
+purchased all of the Province cards (the highest valued victory
+point cards), the game is over.  Generally, this is how the game
+ends.  The other way the game will end is if players exchaust any 3
+piles of action cards in the supply.  Remember, there are 10 piles
+of action cards players may purchase during the game and each of
+these piles contains 10 cards.  When 3 of the piles are gone, the
+game is over.  The game ends immediately when either of these
+conditions is met, players do not continue to play out their hands.
+When the game ends, players simply count their victory point cards
+to determine the winner.
+
+This is enough of an introduction to be able to play the game,
+although it is by no means an exhaustive set of instructions.
+For additional help during the game, the help menu will explain
+what all of the various action cards do.  Enjoy!
+
+"""
+
 # to do
 # python style comments for classes/methods
 # comment style s/b consistent
-
-# to do
-# I think theres a way to get a key from a dict
-# and on a KeyError, return None or something instead
-# this should clean up a bit of code here and there
 
 # bug
 # throne roomed a remodel
@@ -23,9 +85,15 @@
 # but it shouldn't be buy-able
 
 # bug
+# possible bug in the way I am using gardens. Currently they are being
+# substituted for an action card if they are selected for inclusion in
+# a game and I'm not sure if this is actually correct.  They may just
+# be considered an additional card?
+
+# bug
 # throne room. If you play throne room during a turn but then
 # don't take anymore actions, the throne room is still active on
-# the next turn!
+# the next turn! This may be fixed, need to test.
 
 # bug
 # colorama escape codes shouldn't be used if colorama
@@ -47,7 +115,9 @@
 # feature request
 # what about coloring the attack card red? Even though this isn't
 # the way the actual Dominion cards are colored. Might be worth
-# trying.
+# trying. Turns out red is too dark on black background, but may
+# be worth investigating how to do set card colors against a lighter
+# background using colorama.
 
 # feature request
 # create debug mode
