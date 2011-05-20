@@ -5,10 +5,21 @@
 # comment style s/b consistent
 
 # bug
+# throne roomed a remodel
+# remodeled copper into estate
+# tried to remodel the esate into gardens (said no estate in hand)
+# this is b/c remodeled card uses buyCard() which just tosses
+# all the card in the discards (need to know the card at least, or else
+# have buyCard() return a card instead
+# or maybe take a deck to put the card into... :)
+
+# bug
+# curse actually should be in buy menu (for evaluating remodel options)
+# but it shouldn't be buy-able
+
+# bug
 # attacks are generally broken in 3-4 player games
-# if 2 players play successive militia cards
-# the 3rd player has to discard 4 cards!
-# Further, attacks/actions that manipulate other players
+# attacks/actions that manipulate other players
 # decks should be immediately resolved to ensure proper
 # deck state.  If player 1 plays a council room, which
 # entitles player 2 & 3 to draw from their deck into
@@ -19,23 +30,9 @@
 # This is all going to be fixed in a refactor.
 
 # bug
-# Mine card. If you bail from using your Mine after you
-# play it, you lose your action. I think this is a general
-# problem with the play methods. The main action routine
-# assumes that once you play a card, the card goes into
-# the inPlay deck and is removed from hand.
-
-# bug
 # throne room. If you play throne room during a turn but then
 # don't take anymore actions, the throne room is still active on
 # the next turn!
-
-# bug
-# workshop card
-# if you play this card and then decide not to buy anything
-# you gain another workshop card, one stays in your hand, the other
-# stays "inPlay" and eventually gets discarded
-# Feast card has the same problem.
 
 # bug
 # colorama escape codes shouldn't be used if colorama
@@ -96,9 +93,13 @@ class Error( Exception ):
     pass
 
 
-class ActionError( Error ):
+class CanceledAction( Error ):
     pass
-    
+
+
+class IllegalAction( Error ):
+    pass
+
 
 class Deck:
     def __init__( self ):
@@ -192,6 +193,7 @@ class Deck:
     def next( self ):
         try:
             card = self.__cards[ self.__currentCard ]
+        # should this except be catching a KeyError?
         except:
             self.__currentCard = 0
             raise StopIteration
@@ -279,7 +281,7 @@ class Cellar( Card ):
 
             try:
                 cardToRemove = supply.cardShortcuts[discardCard]
-            except:
+            except KeyError:
                 print "\nHuh?"
                 continue
                 
@@ -292,7 +294,7 @@ class Cellar( Card ):
         if numCardsDiscarded:
             player.drawCards( numCardsDiscarded )
         else:
-            raise ActionError()
+            raise CanceledAction()
         
 
 class Village( Card ):
@@ -320,7 +322,7 @@ class Workshop( Card ):
         # if player changes mind about buy, then don't use up this card
         # this creates a duplicate card, oooops
         if not buyCard( supply, player, 4, True ):
-            raise ActionError()
+            raise CanceledAction()
 
 
 class Militia( Card ):
@@ -361,11 +363,11 @@ class Remodel( Card ):
             choice = raw_input("Select a card to trash (q to quit)> ")
 
             if choice == "q":
-                raise ActionError()
+                raise CanceledAction()
 
             try:
                 trashedCard = supply.cardShortcuts[choice]
-            except:
+            except KeyError:
                 print "Huh?"
                 continue
             
@@ -419,7 +421,7 @@ class Mine( Card ):
 
         if not validAction:
             print "You have no copper or silver in hand."
-            raise ActionError()
+            raise IllegalAction()
             
         while True:
             cardName = raw_input("Select a card to trash (q to quit)> ")
@@ -427,11 +429,11 @@ class Mine( Card ):
             # One probably loses this action if they quit, but
             # at least the game isn't dead in this case.
             if cardName is "q":
-                raise ActionError()
+                raise CanceledAction()
 
             try:
                 trashedCard = supply.cardShortcuts[cardName]
-            except:
+            except KeyError:
                 print "Please choose either copper or silver." % cardName
                 continue
 
@@ -477,7 +479,7 @@ class Moneylender( Card ):
         copperCard = supply.cardShortcuts["copper"]
         if not player.hand.contains( copperCard ):
             print "\nYou have no copper in hand."
-            raise ActionError()
+            raise IllegalAction()
 
         print "%s trashed %s." % (player.name, copperCard)
         player.hand.remove( copperCard )
@@ -550,7 +552,7 @@ class Feast( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name        
         if not buyCard( supply, player, 5, True ):
-            raise ActionError()
+            raise CanceledAction()
 
 
 class Adventurer( Card ):
@@ -575,7 +577,7 @@ class Adventurer( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
-                print "%s shuffles %d cards." % \
+                print ">< %s shuffles %d cards." % \
                       (player.name, len( player.deck )) 
                 player.discard = Deck()
                 newCard = player.deck.deal()
@@ -653,7 +655,7 @@ class Spy( Card ):
             except ValueError:
                 other.deck.extend( other.discard )
                 other.deck.shuffle()
-                print "%s shuffles %d cards." % \
+                print ">< %s shuffles %d cards." % \
                       (other.name, len( other.deck ))                 
                 other.discard = Deck()
                 topCard = other.deck.deal()
@@ -714,7 +716,7 @@ class Thief( Card ):
                 except ValueError:
                     other.deck.extend( other.discard )
                     other.deck.shuffle()
-                    print "%s shuffles %d cards." % \
+                    print ">< %s shuffles %d cards." % \
                           (other.name, len( other.deck ))
                     other.discard = Deck()
                     topCard = other.deck.deal()
@@ -772,7 +774,7 @@ class Thief( Card ):
                     # else, argh, get the shortcut
                     try:
                         theCard = supply.cardShortcuts[whichOne]
-                    except:
+                    except KeyError:
                         print "Huh?"
                         continue
 
@@ -851,7 +853,7 @@ class Library( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
-                print "%s shuffles %d cards." % \
+                print ">< %s shuffles %d cards." % \
                       (player.name, len( player.deck ))                 
                 player.discard = Deck()
                 topCard = player.deck.deal()
@@ -908,8 +910,8 @@ class Chapel( Card ):
                 break
             
             try:
-                trashedCard = supply.cardShortcuts[ choice ]
-            except:
+                trashedCard = supply.cardShortcuts[choice]
+            except KeyError:
                 print "Huh?"
                 continue
             
@@ -921,7 +923,7 @@ class Chapel( Card ):
                 print "You don't have that card in hand."
 
         if not cardsTrashed:
-            raise ActionError()
+            raise CanceledAction()
 
 
 class ThroneRoom( Card ):
@@ -1060,7 +1062,7 @@ class Player:
             except ValueError:
                 self.deck.extend( self.discard )
                 self.deck.shuffle()
-                print "%s shuffles %d cards." % \
+                print ">< %s shuffles %d cards." % \
                       (self.name, len( self.deck ))
                 self.discard = Deck()
                 card = self.deck.deal()
@@ -1278,7 +1280,7 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
         try:
             card = supply.cardShortcuts[cardName]
             break
-        except:
+        except KeyError:
             print "\nThat card name is not valid."
 
     if cardName == "q":
@@ -1384,7 +1386,7 @@ def handleAttacks( turn, player, supply ):
                         
                         try:
                             discardCard = supply.cardShortcuts[cardName]
-                        except:
+                        except KeyError:
                             print "Huh?"
                             continue
 
@@ -1425,7 +1427,7 @@ def handleAttacks( turn, player, supply ):
                     newCurse = None
                     try:
                         newCurse = supply.decks["curse"].deal()
-                    except:
+                    except ValueError:
                         print "No curse cards remaining."
                     if newCurse:
                         print "You take a curse.\n"
@@ -1548,7 +1550,7 @@ def main():
         numPlayers = raw_input("\nNumber of players (1-4)> ")
         try:
             numPlayers = int(numPlayers)
-        except:
+        except ValueError:
             print "\nPlease enter a valid number."
             continue
 
@@ -1579,7 +1581,7 @@ def main():
             players[i].deck.add( Estate() )
 
         players[i].deck.shuffle()
-        print "%s shuffles %d cards." % (players[i].name,
+        print ">< %s shuffles %d cards." % (players[i].name,
                                          len( players[i].deck))
 
         # deal me a new one partna
@@ -1736,9 +1738,9 @@ def main():
                 card = raw_input("\nCard to play> ")
                 # first see if they entered a shortcut
                 try:
-                    card = supply.cardShortcuts[ card ]
+                    card = supply.cardShortcuts[card]
                     break
-                except:
+                except KeyError:
                     print "Huh?"
                     continue
                  
@@ -1769,7 +1771,8 @@ def main():
                     try:
                         cardInPlay.play( player, players, turn, supply )
                         player.numActions -= 1
-                    except ActionError:
+                    except Error:
+                        pass
                         
                         # put everything back
                         player.inPlay.remove( cardInPlay )
@@ -1794,7 +1797,7 @@ def main():
 
                         try:
                             cardInPlay.play( player, players, turn, supply )
-                        except ActionError():
+                        except Error:
                             pass
 
         # *******************************************************

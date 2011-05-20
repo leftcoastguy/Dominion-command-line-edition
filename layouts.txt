@@ -1,10 +1,15 @@
+a:aristocracy
+cellar, bureaucrat, moneylender, chancellor, remodel, gardens, library, throne room, spy, market
 b:beginners game
 moat, cellar, village, woodcutter, workshop, militia, smithy, remodel, market, mine
+c:commerce
+adventurer, mine, market, festival, thief, remodel, moneylender, village, bureaucrat, gardens
+ch:chess
+cellar, chapel, moat, chancellor, village, militia, council room, witch, remodel, gardens
 f:feudal lords
 moat, cellar, woodcutter, feast, gardens, militia, remodel, market, mine, throne room
 m:mountainside villages
 village, witch, spy, mine, woodcutter, workshop, chapel, feast, festival, smithy
 w:warring states
-militia, moat, spy, thief, adventurer, village, moneylender, festival, council room, bureaucrat
-a:aristocracy
-cellar, bureaucrat, moneylender, chancellor, remodel, gardens, library, throne room, spy, market
+militia, moat, spy, mine, adventurer, market, moneylender, festival, council room, bureaucrat
+
