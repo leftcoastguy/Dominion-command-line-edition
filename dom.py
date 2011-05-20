@@ -176,7 +176,7 @@ class Deck:
     def next( self ):
         try:
             card = self.__cards[ self.__currentCard ]
-        # should this except be catching a KeyError?
+        # should this except be catching a ValueError?
         except:
             self.__currentCard = 0
             raise StopIteration
@@ -409,8 +409,6 @@ class Mine( Card ):
         while True:
             cardName = raw_input("Select a card to trash (q to quit)> ")
 
-            # One probably loses this action if they quit, but
-            # at least the game isn't dead in this case.
             if cardName is "q":
                 raise CanceledAction()
 
@@ -1188,7 +1186,6 @@ class CardSupply():
     # rather than contain all known cards/shortcuts
     def __setupCardShortcuts( self ):
 
-        # Not sure I like these values as card instances.
         for deck in self.decks.values():
             card = deck.peek()
             self.shortcut[card.name] = card
@@ -1382,7 +1379,7 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
 
     return False
 
-def handleAttacks( turn, player, supply ):
+def handleDelayedAttacks( turn, player, supply ):
 
         # get rid of finished attacks
         finishedAttacks = []
@@ -1413,7 +1410,7 @@ def handleAttacks( turn, player, supply ):
                         if numCardsInHand == 3:
                             break
 
-                        cardName = raw_input("Card name to discard> ")
+                        cardName = raw_input("Card to discard> ")
                         
                         try:
                             discardCard = supply.shortcut[cardName]
@@ -1425,7 +1422,7 @@ def handleAttacks( turn, player, supply ):
                             player.hand.remove( discardCard )
                             player.discard.add( discardCard )
                         else:
-                            print "Try discarding something from your hand!"
+                            print "Try discarding something from your hand."
 
             
 def selectKingdomCards():
@@ -1523,6 +1520,123 @@ def showTitleFromFile():
         pass
     print title
 
+
+def isGameOver( players, supply ):
+
+    
+    gameOver = False
+    if supply.decks[ "province" ].empty():
+        print "The province deck is empty."
+        gameOver = True
+
+    # look at kingdom card decks
+    numEmptyDecks = 0
+    emptyDeckNames = []
+    for ( deckName, deck ) in supply.decks.items():
+        if deckName in ["estate", "duchy", "province",
+                        "copper", "silver", "gold", "curse"]:
+            continue
+        
+        if deck.empty():
+                numEmptyDecks += 1
+                emptyDeckNames.append( deckName )
+
+    if numEmptyDecks:
+        print "These kingdom card decks are now empty: ", emptyDeckNames
+
+    if numEmptyDecks >= 3:
+        gameOver = True
+
+    if gameOver:
+        for i in range( turn.numPlayers ):
+            # combine all the decks
+            players[i].deck.extend( players[i].inPlay )
+            players[i].deck.extend( players[i].hand )
+            players[i].deck.extend( players[i].discard )
+            
+            # lets count all the cards in each players hand
+            counts = {}
+            for card in players[i].deck:
+                if counts.has_key( card.name ):
+                    counts[ card.name ] += 1
+                else:
+                    counts[ card.name ] = 1
+
+            # for now, stop dumping out the final
+            # decks
+            #print "Player %s" % ( players[i].name)
+            #for (cardName, count) in counts.items():
+            #    print "     %s %d" % ( cardName, count )
+                    
+        print "********** GAME OVER **********"
+        for i in range( turn.numPlayers ):            
+            print "Player: %d *%s* VP: %d" % \
+                  (i + 1, players[i].name, players[i].deck.getVP())
+        print "*******************************"
+
+    return gameOver
+
+def playActionCard( player, players, turn, supply ):
+
+    while True:
+        card = raw_input("\nCard to play> ")
+        # first see if they entered a shortcut
+        try:
+            card = supply.shortcut[card]
+            break
+        except KeyError:
+            print "Huh?"
+            continue
+                 
+    if not player.hand.contains( card ):
+        print "You don't have that card in hand."
+    else:
+
+        # get the card from hand so it can't be used
+        # again during this turn
+        cardInPlay = card
+
+        if not cardInPlay.action:
+            print "That is not an action card."
+
+        else:
+
+            # toggle off the throne room chain
+            if cardInPlay != ThroneRoom():
+                turn.chainingThroneRooms = False
+
+            # take the card from the hand
+            player.hand.remove( cardInPlay )
+
+            # immediately put the card into the inPlay deck
+            player.inPlay.add( cardInPlay )
+
+            # resolve the card
+            try:
+                cardInPlay.play( player, players, turn, supply )
+                player.numActions -= 1
+            except Error:
+                player.inPlay.remove( cardInPlay )
+                player.hand.add( cardInPlay )
+
+                return
+
+            # resolve double play for Throne Room
+            # we toggle the bool off when the chain of
+            # throne rooms is finished being played
+            if (not turn.chainingThroneRooms and
+                turn.numThroneRooms > 0):
+                turn.numThroneRooms -= 1
+
+                # do it again
+                # second play shouldn't decrement numActions
+                print "\nThrone Room active, re-playing %s" % \
+                      cardInPlay.displayName
+
+                try:
+                    cardInPlay.play( player, players, turn, supply )
+                except Error:
+                    pass
                                     
 def main():
 
@@ -1575,7 +1689,7 @@ def main():
         # deal me a new one partna
         players[i].drawCards( 5, silent = True )
 
-    isNewHand = True
+    isNextPlayer = True
     currentPlayerNumber = 0
 
     # now that there are actual card instances with play() methods
@@ -1590,69 +1704,19 @@ def main():
         
         player = players[currentPlayerNumber]
 
-        gameOver = False
-        if supply.decks[ "province" ].empty():
-            print "The province deck is empty."
-            gameOver = True
-
-        # look at kingdom card decks
-        numEmptyDecks = 0
-        emptyDeckNames = []
-        for ( deckName, deck ) in supply.decks.items():
-            if deckName in ["estate", "duchy", "province",
-                            "copper", "silver", "gold", "curse"]:
-                continue
-            if deck.empty():
-                numEmptyDecks += 1
-                emptyDeckNames.append( deckName )
-
-        if numEmptyDecks:
-            print "These kingdom card decks are now empty: ", emptyDeckNames
-
-        if numEmptyDecks >= 3:
-            gameOver = True
-
-        if gameOver:
-            for i in range( turn.numPlayers ):
-                # combine all the decks
-                players[i].deck.extend( players[i].inPlay )
-                players[i].deck.extend( players[i].hand )
-                players[i].deck.extend( players[i].discard )
-                
-                # lets count all the cards in each players hand
-                counts = {}
-                for card in players[i].deck:
-                    if counts.has_key( card.name ):
-                        counts[ card.name ] += 1
-                    else:
-                        counts[ card.name ] = 1
-
-                # for now, stop dumping out the final
-                # decks
-                #print "Player %s" % ( players[i].name)
-                #for (cardName, count) in counts.items():
-                #    print "     %s %d" % ( cardName, count )
-                    
-            print "********** GAME OVER **********"
-            for i in range( turn.numPlayers ):            
-                print "Player: %d *%s* VP: %d" % \
-                      (i + 1, players[i].name, players[i].deck.getVP())
-            print "*******************************"
+        if isGameOver( players, supply ):
             break
 
+        # set menu options which are always available
         taskList = ["+", "x", "h", "c"]
 
-        # if the game is not over, keep going
-        # deal 5 cards, reset counters
-        if isNewHand:
+        if isNextPlayer:
             print "\n+++++++++++++++++++++++++++++++++++++++++++++++++++"
             player.numHands += 1
             player.numBuys = 1
             player.numActions = 0
             player.spendBonus = 0
 
-            # determine actions for this hand
-            # do you have any single action card in hand?
             for card in player.hand:
                 if card.action:
                     player.numActions += 1
@@ -1677,17 +1741,15 @@ def main():
                    player.spendBonus + player.hand.getCoin())            
 
         # deal with attack cards in play
-        if isNewHand:
-            isNewHand = False
-            handleAttacks( turn, player, supply )
-            
-        # end of attacks section
-                        
-        # show available menu options to player
+        if isNextPlayer:
+            isNextPlayer = False
+            handleDelayedAttacks( turn, player, supply )
+
+        # add action menu option
         if player.numActions > 0:
             for card in player.hand:
                 if card.action:
-                    taskList += "a"
+                    taskList.append( "a" )
                     break
 
         print
@@ -1697,8 +1759,8 @@ def main():
 
         if ((player.hand.getCoin() + player.spendBonus) > 0  and
             player.numBuys > 0):
+            taskList.append( "b" )
             print "(b) buy card (into discard pile)"
-            taskList += "b"
 
         print "(c) count cards"
         print "(h) card help"
@@ -1711,87 +1773,23 @@ def main():
             else:
                 print "Huh?"
 
-        # buy cards        
         if task == "b":
             buyCard( supply, player, 8 )
         
         if task == "+":
             dumpDecks( player )
 
-        # *******************************************************
-        # play action
-        
         if task == "a":
-            while True:
-                card = raw_input("\nCard to play> ")
-                # first see if they entered a shortcut
-                try:
-                    card = supply.shortcut[card]
-                    break
-                except KeyError:
-                    print "Huh?"
-                    continue
-                 
-            if not player.hand.contains( card ):
-                print "You don't have that card in hand."
-            else:
+            playActionCard( player, players, turn, supply )
 
-                # get the card from hand so it can't be used
-                # again during this turn
-                cardInPlay = card
-
-                if not cardInPlay.action:
-                    print "That is not an action card."
-
-                else:
-
-                    # toggle off the throne room chain
-                    if cardInPlay != ThroneRoom():
-                        turn.chainingThroneRooms = False
-
-                    # take the card from the hand
-                    player.hand.remove( cardInPlay )
-
-                    # immediately put the card into the inPlay deck
-                    player.inPlay.add( cardInPlay )
-
-                    # resolve the card
-                    try:
-                        cardInPlay.play( player, players, turn, supply )
-                        player.numActions -= 1
-                    except Error:
-                        pass
-                        
-                        # put everything back
-                        player.inPlay.remove( cardInPlay )
-                        player.hand.add( cardInPlay )
-
-                    # remove this option from the menu
-                    if player.numActions == 0:
-                        if "a" in taskList:
-                            taskList.remove( "a" )
-
-                    # resolve double play for Throne Room
-                    # we toggle the bool off when the chain of
-                    # throne rooms is finished being played
-                    if (not turn.chainingThroneRooms and
-                        turn.numThroneRooms > 0):
-                        turn.numThroneRooms -= 1
-
-                        # do it again
-                        # second play shouldn't decrement numActions
-                        print "\nThrone Room active, re-playing %s" % \
-                              cardInPlay.displayName
-
-                        try:
-                            cardInPlay.play( player, players, turn, supply )
-                        except Error:
-                            pass
-
-        # *******************************************************
+            # out of actions?
+            if player.numActions == 0:
+                if "a" in taskList:
+                    taskList.remove( "a" )
             
         if task == "x":
-            # Feast gets trashed after succesfully played
+            # Feast card is a special case--
+            # it gets trashed after it is used
             try:
                 while player.inPlay.contains( supply.shortcut["feast"] ):
                     player.inPlay.remove( supply.shortcut["feast"] )
@@ -1800,9 +1798,9 @@ def main():
                 
             player.discard.extend( player.inPlay )
             player.inPlay = Deck()
-            turn.throneRoom = 0
-            isNewHand = True
-
+            turn.numThroneRooms = 0
+            turn.chainingThroneRooms = False
+            isNextPlayer = True
 
         if task == "h":
             cardHelp( supply.decks )
@@ -1813,8 +1811,8 @@ def main():
                     continue
                 print "%s %d" % (deckName, len( deck ))
 
-        # put cards in hand into discard pile
-        if isNewHand:
+        # clean up
+        if isNextPlayer:
             player.discard.extend( player.hand )
             player.hand = Deck()
 
