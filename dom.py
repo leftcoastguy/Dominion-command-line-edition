@@ -4,6 +4,11 @@
 # python style comments for classes/methods
 # comment style s/b consistent
 
+# to do
+# I think theres a way to get a key from a dict
+# and on a KeyError, return None or something instead
+# this should clean up a bit of code here and there
+
 # bug
 # throne roomed a remodel
 # remodeled copper into estate
@@ -18,18 +23,6 @@
 # but it shouldn't be buy-able
 
 # bug
-# attacks are generally broken in 3-4 player games
-# attacks/actions that manipulate other players
-# decks should be immediately resolved to ensure proper
-# deck state.  If player 1 plays a council room, which
-# entitles player 2 & 3 to draw from their deck into
-# their hand, then player 2 plays a spy, which peaks at
-# the top card on each players deck, player 3 will not have
-# drawn their council room card yet and so player 2 will
-# actually get to potentially discard that card!
-# This is all going to be fixed in a refactor.
-
-# bug
 # throne room. If you play throne room during a turn but then
 # don't take anymore actions, the throne room is still active on
 # the next turn!
@@ -40,17 +33,6 @@
 
 # refactor
 # menu commands should be in a dict of command to functions
-
-# refactor
-# when a player is playing their action cards, all of their actions/
-# attacks will be handled immediately, except in the case where the
-# resolution depends on other players making choices.  Currently,
-# this is only the militia card. The militia card will get a new
-# attribute, like delayedResolution or something, such that it will
-# be resolved by players on their turn.  Everything else will be
-# resolved immediately.  Further, card will be dealt to players within
-# the play() method, rather than after the play() method returns.
-# this is necessary in cases like Spy.
 
 # feature request
 # change (c) count kingdom cards option to something like
@@ -164,9 +146,10 @@ class Deck:
         self.__cards.remove( card )
 
     def contains( self, card ):
-        for c in self.__cards:
-            if c.name == card.name:
-                return True
+        if card:
+            for c in self.__cards:
+                if c.name == card.name:
+                    return True
 
         return False
 
@@ -577,7 +560,7 @@ class Adventurer( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
-                print ">< %s shuffles %d cards." % \
+                print "====> %s shuffles %d cards." % \
                       (player.name, len( player.deck )) 
                 player.discard = Deck()
                 newCard = player.deck.deal()
@@ -602,10 +585,44 @@ class Bureaucrat( Card ):
                        "and puts it on top of their deck." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s. Gain a %s on top of your deck.\n" % \
-              (self.name, supply.cardShortcuts[ "silver" ].displayName)
-        player.deck.push( supply.cardShortcuts[ "silver" ] )
-        turn.attacksInPlay.append( Attack( self.name, player.name ))
+        print "\n%s plays %s" % \
+              (player.name, self.displayName)
+
+        silver = supply.cardShortcuts["silver"]
+        player.deck.push( silver )
+        print "\nA %s added on top of %s's deck.\n" % \
+              (silver.displayName, player.name)
+
+        for other in players:
+
+            if other.name == player.name:
+                continue
+
+            moat = None
+            try:
+                moat = supply.cardShortcuts["moat"]
+            except KeyError:
+                pass
+            
+            if other.hand.contains( moat ):
+                print "%s deflects the attack with a moat." % \
+                      other.name
+            else:
+                cardToRemove = None
+                for card in other.hand:
+                    if card.vp:
+                        cardToRemove = card
+                        break
+
+                if cardToRemove:
+                    print "Moved %s's %s from hand " \
+                          "to top of deck." % \
+                          (other.name, cardToRemove.displayName )
+                    other.hand.remove( cardToRemove )
+                    other.deck.push( cardToRemove )
+                else:
+                    print "%s has no VP cards in hand." \
+                          % other.name
 
 
 class Witch( Card ):
@@ -615,9 +632,33 @@ class Witch( Card ):
                        "+2 cards.  Each other player takes a curse card." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing witch,  +2 cards."
+        print "\n%s plays %s." % (player.name, self.displayName)
+
         player.drawCards( 2 )
-        turn.attacksInPlay.append( Attack( self.name, player.name ))
+
+        for other in players:
+            if other.name == player.name:
+                continue
+
+            moat = None
+            try:
+                moat = supply.cardShortcuts["moat"]
+            except KeyError:
+                pass            
+            
+            if other.hand.contains( moat ):
+                print "%s deflects the attack with a moat.\n" % other.name
+            else:
+                newCurse = None
+                try:
+                    newCurse = supply.decks["curse"].deal()
+                except ValueError:
+                    print "The %s supply is empty." % self.displayName
+
+                if newCurse:
+                    print "%s takes a %s!" % \
+                          (other.name, newCurse.displayName)
+                    other.discard.add( newCurse )
 
 
 class Spy( Card ):
@@ -629,7 +670,7 @@ class Spy( Card ):
                        "discards it or puts it back, your choice." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing Spy, +1 card, +1 action."
+        print "\n%s plays %s." % (player.name, self.displayName)
 
         player.drawCards( 1 )
         player.numActions += 1
@@ -645,8 +686,14 @@ class Spy( Card ):
         
             # first check to see if other has a moat in hand
             if not isPlayer:
-                if other.hand.contains( supply.cardShortcuts["moat"] ):
-                    print "\n%s deflects the attack with a moat." % \
+                moat = None
+                try:
+                    moat = supply.cardShortcuts["moat"]
+                except KeyError:
+                    pass
+                
+                if other.hand.contains( moat ):
+                    print "%s deflects the attack with a moat." % \
                           (other.name)
                     continue
             
@@ -655,7 +702,7 @@ class Spy( Card ):
             except ValueError:
                 other.deck.extend( other.discard )
                 other.deck.shuffle()
-                print ">< %s shuffles %d cards." % \
+                print "====> %s shuffles %d cards." % \
                       (other.name, len( other.deck ))                 
                 other.discard = Deck()
                 topCard = other.deck.deal()
@@ -694,7 +741,7 @@ class Thief( Card ):
                        "revealed cards." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s." % self.name
+        print "\n%s plays %s." % (player.name, self.displayName)
 
         # this is a fucking nightmare
         localTrash = []
@@ -704,7 +751,13 @@ class Thief( Card ):
                 continue
 
             # first check to see if other has a moat in hand
-            if other.hand.contains( supply.cardShortcuts["moat"] ):
+            moat = None
+            try:
+                moat = supply.cardShortcuts["moat"]
+            except KeyError:
+                pass
+            
+            if other.hand.contains( moat ):
                 print "\n%s deflects the attack with a moat." % other.name
                 continue
 
@@ -716,7 +769,7 @@ class Thief( Card ):
                 except ValueError:
                     other.deck.extend( other.discard )
                     other.deck.shuffle()
-                    print ">< %s shuffles %d cards." % \
+                    print "====> %s shuffles %d cards." % \
                           (other.name, len( other.deck ))
                     other.discard = Deck()
                     topCard = other.deck.deal()
@@ -853,7 +906,7 @@ class Library( Card ):
             except ValueError:
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
-                print ">< %s shuffles %d cards." % \
+                print "====> %s shuffles %d cards." % \
                       (player.name, len( player.deck ))                 
                 player.discard = Deck()
                 topCard = player.deck.deal()
@@ -885,11 +938,16 @@ class CouncilRoom( Card ):
                        "+4 cards.  +1 buy.  Each other player draws a card." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +4 cards, +1 buy.\n" % self.name
+        print "%s plays %s" % (player.name, self.name)
         player.drawCards( 4 )
         player.numBuys += 1
-        turn.attacksInPlay.append( Attack( self.name, player.name ))
 
+        for other in players:
+            if other.name == player.name:
+                continue
+            
+            other.drawCards( 1 )
+        
 
 class Chapel( Card ):
     def __init__( self ):
@@ -1062,7 +1120,7 @@ class Player:
             except ValueError:
                 self.deck.extend( self.discard )
                 self.deck.shuffle()
-                print ">< %s shuffles %d cards." % \
+                print "====> %s shuffles %d cards." % \
                       (self.name, len( self.deck ))
                 self.discard = Deck()
                 card = self.deck.deal()
@@ -1396,50 +1454,7 @@ def handleAttacks( turn, player, supply ):
                         else:
                             print "Try discarding something from your hand!"
 
-            if attack.attackName == "bureaucrat":
-                print "%s's bureaucrat card is in play." % attack.playerName
-
-                if player.hand.contains( supply.cardShortcuts["moat"] ):
-                    print "You deflect the attack with the moat.\n"
-                else:
-                    cardToRemove = None
-                    for card in player.hand:
-                        if card.vp:
-                            cardToRemove = card
-                            break
-
-                    if cardToRemove:
-                        print "Putting %s from your hand " \
-                              "on top of your deck.\n" % \
-                              cardToRemove.displayName
-                        player.hand.remove( cardToRemove )
-                        player.deck.push( cardToRemove )
-                    else:
-                        print "You have no VP cards in hand.\n"
-                        
-                    print "Hand: %s\n" % (player.hand)
-
-            if attack.attackName == "witch":
-                print "%s's witch is in play!" % attack.playerName
-                if player.hand.contains( supply.cardShortcuts["moat"] ):
-                    print "You deflect the attack with the moat.\n"
-                else:
-                    newCurse = None
-                    try:
-                        newCurse = supply.decks["curse"].deal()
-                    except ValueError:
-                        print "No curse cards remaining."
-                    if newCurse:
-                        print "You take a curse.\n"
-                        player.discard.add( newCurse )
-
-            if attack.attackName == "council room":
-                print "%s's council room gives you another card." % \
-                      attack.playerName
-                player.drawCards( 1 )
-                print "\nHand: %s" % player.hand
-
-
+            
 def selectKingdomCards():
 
     DECK_LAYOUTS_FILE = "layouts.txt"
@@ -1581,7 +1596,7 @@ def main():
             players[i].deck.add( Estate() )
 
         players[i].deck.shuffle()
-        print ">< %s shuffles %d cards." % (players[i].name,
+        print "====> %s shuffles %d cards." % (players[i].name,
                                          len( players[i].deck))
 
         # deal me a new one partna
