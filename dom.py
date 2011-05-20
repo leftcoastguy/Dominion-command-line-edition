@@ -91,6 +91,15 @@ except ImportError:
     print "ImportError: Couldn't find the colorama module."
     colorama = None
 
+
+class Error( Exception ):
+    pass
+
+
+class ActionError( Error ):
+    pass
+    
+
 class Deck:
     def __init__( self ):
         self.__cards = []
@@ -259,7 +268,8 @@ class Cellar( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s, +1 action." % self.name
         player.numActions += 1
-        numCardsToDraw = 0
+        numCardsDiscarded = 0
+        
         while True:
             print "\nhand: %s" % player.hand
             discardCard = raw_input("Card name to discard (q to quit)> ")
@@ -275,11 +285,14 @@ class Cellar( Card ):
                 
             if player.hand.contains( cardToRemove ):
                 print "Discarded %s." % cardToRemove.displayName
-                numCardsToDraw += 1
+                numCardsDiscarded += 1
                 player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
 
-        player.drawCards( numCardsToDraw )
+        if numCardsDiscarded:
+            player.drawCards( numCardsDiscarded )
+        else:
+            raise ActionError()
         
 
 class Village( Card ):
@@ -307,8 +320,7 @@ class Workshop( Card ):
         # if player changes mind about buy, then don't use up this card
         # this creates a duplicate card, oooops
         if not buyCard( supply, player, 4, True ):
-            player.hand.add( Workshop() )
-            player.numActions += 1
+            raise ActionError()
 
 
 class Militia( Card ):
@@ -344,8 +356,12 @@ class Remodel( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name
+
         while True:
-            choice = raw_input("Select a card to trash> ")
+            choice = raw_input("Select a card to trash (q to quit)> ")
+
+            if choice == "q":
+                raise ActionError()
 
             try:
                 trashedCard = supply.cardShortcuts[choice]
@@ -402,11 +418,8 @@ class Mine( Card ):
                 validAction = True
 
         if not validAction:
-            # UGH, this probably clones the Mine!
-            player.hand.add( Mine() )
-            player.numActions += 1
             print "You have no copper or silver in hand."
-            return
+            raise ActionError()
             
         while True:
             cardName = raw_input("Select a card to trash (q to quit)> ")
@@ -414,7 +427,8 @@ class Mine( Card ):
             # One probably loses this action if they quit, but
             # at least the game isn't dead in this case.
             if cardName is "q":
-                break
+                raise ActionError()
+
             try:
                 trashedCard = supply.cardShortcuts[cardName]
             except:
@@ -458,14 +472,12 @@ class Moneylender( Card ):
                        "Trash a copper in hand. If you do, +3 spend.")    
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +3 spend.\n" % self.name
+        print "Playing %s.\n" % self.name
 
         copperCard = supply.cardShortcuts["copper"]
         if not player.hand.contains( copperCard ):
             print "\nYou have no copper in hand."
-            player.hand.add( Moneylender() )
-            player.numActions += 1            
-            return
+            raise ActionError()
 
         print "%s trashed %s." % (player.name, copperCard)
         player.hand.remove( copperCard )
@@ -538,8 +550,7 @@ class Feast( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name        
         if not buyCard( supply, player, 5, True ):
-            player.hand.add( Feast() )
-            player.numActions += 1
+            raise ActionError()
 
 
 class Adventurer( Card ):
@@ -569,14 +580,14 @@ class Adventurer( Card ):
                 player.discard = Deck()
                 newCard = player.deck.deal()
             
-            print "Dealt %s." % (newCard.displayName),
-            
             if newCard.value:
-                print " Added to hand."
+                print "%s draws % and takes it in hand." % \
+                      (player.name, newCard.displayName )
                 player.hand.add( newCard )
                 treasureCards += 1
             else:
-                print " Discarded."
+                print "%s draws % and discards it." % \
+                      (player.name, newCard.displayName )
                 player.discard.add( newCard )
 
 
@@ -618,10 +629,6 @@ class Spy( Card ):
     def play( self, player, players, turn, supply ):
         print "Playing Spy, +1 card, +1 action."
 
-        # this sort of sucks, can't use the turn.cardToDeal value
-        # here because if we do, they will put back the card that
-        # they are about to deal, rather than dealing and peaking
-        # at their *next* card (and potentially putting that back).
         player.drawCards( 1 )
         player.numActions += 1
 
@@ -647,7 +654,7 @@ class Spy( Card ):
                 other.deck.extend( other.discard )
                 other.deck.shuffle()
                 print "%s shuffles %d cards." % \
-                      (player.name, len( player.deck ))                 
+                      (other.name, len( other.deck ))                 
                 other.discard = Deck()
                 topCard = other.deck.deal()
 
@@ -669,7 +676,7 @@ class Spy( Card ):
                       (other.name, topCard.displayName)
                 other.discard.add( topCard )
             else:
-                print "\nPut %s's %s back on the deck." % \
+                print "\n%s's %s goes back." % \
                       (other.name, topCard.displayName)
                 other.deck.push( topCard )
 
@@ -708,7 +715,7 @@ class Thief( Card ):
                     other.deck.extend( other.discard )
                     other.deck.shuffle()
                     print "%s shuffles %d cards." % \
-                          (player.name, len( player.deck ))
+                          (other.name, len( other.deck ))
                     other.discard = Deck()
                     topCard = other.deck.deal()
 
@@ -716,8 +723,10 @@ class Thief( Card ):
                     treasure += 1
                 reveal.append( topCard )
 
-            print "\nThe next 2 cards from %s's deck are %s, %s." % \
-                  (other.name, reveal[0].displayName, reveal[1].displayName)
+            print "\n%s reveals %s and %s." % \
+                  (other.name,
+                   reveal[0].displayName,
+                   reveal[1].displayName)
 
             if treasure == 1:                
                 if reveal[0].value:
@@ -726,30 +735,37 @@ class Thief( Card ):
                 else:
                     treasureCard = reveal[1]
                     otherCard = reveal[0]
-                    
+
+                prompt = "%s, trash the %s? (y/n)> " % \
+                         (player.name, treasureCard.displayName)
                 while True:
-                    trashIt = raw_input( "Trash the treasure card? (y/n)>" )
+                    trashIt = raw_input( prompt )
                     if trashIt in ["y", "n"]:
                         break
                     
                 if trashIt == "y":
-                    print "Trashed %s." % treasureCard
+                    print "The %s is trashed." % treasureCard.displayName
                     localTrash.append( treasureCard )
                 else:
-                    print "Discarded %s." % treasureCard
+                    print "The %s is discarded" % treasureCard.displayName
                     other.discard.add( treasureCard )
-                print "Discarded %s." % otherCard
+                print "The %s gets discarded." % otherCard.displayName
                 other.discard.add( otherCard )
                     
             elif treasure == 2:
                 while True:
-                    whichOne = raw_input(
-                        "Card name to trash, <enter> to trash nothing> " )
+                    prompt = "%s, choose one to trash " \
+                             "(q trashes nothing)> " % player.name
+                    whichOne = raw_input( prompt )
+
+                    if whichOne == "q":
+                        break
 
                     # trash nothing, discard both
                     if whichOne == "":
                         for card in reveal:
-                            print "Discarded: %s" % card.displayName
+                            print "%s discarded." % \
+                                  card.displayName
                             other.discard.add( card )
                         break
 
@@ -771,45 +787,52 @@ class Thief( Card ):
                         continue
 
                     # we know there are 2 cards in reveal list, right?
-                    # now resolve their choice
+                    # now resolve the choice
+                    # this code is dumb
                     if reveal[0] == theCard:
-                        print "Trashed %s." % reveal[0].displayName
-                        print "Discarded %s." % reveal[1].displayName
+                        print "The %s is trashed." % \
+                              reveal[0].displayName
+                        print "The %s is discarded." % \
+                              reveal[1].displayName
                         localTrash.append( reveal[0] )
                         other.discard.add( reveal[1] )
                     else:
-                        print "Trashed %s." % reveal[1].displayName
-                        print "Discarded %s." % reveal[0].displayName                        
+                        print "The %s is trashed." % \
+                              reveal[1].displayName
+                        print "The %s is discarded." % \
+                              reveal[0].displayName
                         localTrash.append( reveal[1] )
                         other.discard.add( reveal[0] )
                     break
                 
             else:
-                print "%s has no treasure in hand." % other.name
 
-                # put 'em in the discard pile
+                # In this case, the cards weren't actually revealed
+                # and they just go back to the other player's hand
                 for card in reveal:
-                    print "Discarded %s." % card.displayName
-                    other.discard.add( card )
+                    other.hand.add( card )
                 continue
 
-        # now go through the trash you thief!
+        # now rifle through the trash you thief!
         if len( localTrash ):
-            print "\nSteal any of the cards you trashed."
+            print "\n%s, you may steal any of the trashed cards.\n" % \
+                  player.name
+            
             for card in localTrash:
-                print "\n%s: " % card.displayName,
+                prompt = "(t)ake or (l)eave a %s?> " % card.displayName
                 while True:
-                    stealIt = raw_input("(s)teal or (t)rash it?> ")
-                    if stealIt in ["t", "s"]:
+                    stealIt = raw_input( prompt )
+                    if stealIt in ["t", "l"]:
                         break
-                if stealIt == "s":
-                    print "%s steals a %s!" % \
+                if stealIt == "t":
+                    print "%s gains a %s!" % \
                           (player.name, card.displayName)
                     player.discard.add( card )
                 else:
-                    print "Trashed %s." % card.displayName
+                    print "%s tosses the %s." % \
+                          (player.name, card.displayName)
         else:
-            print "There is nothing to steal!"
+            print "No one had treasure to steal."
 
 
 class Library( Card ):
@@ -832,23 +855,24 @@ class Library( Card ):
                       (player.name, len( player.deck ))                 
                 player.discard = Deck()
                 topCard = player.deck.deal()
-                
+
             if topCard.action:
+                print "\n%s draws %s." % (player.name, topCard)                
                 while True:
-                    print "Drew: %s." % topCard
-                    keepIt = raw_input( "(d)iscard or (k)eep >" )
+                    keepIt = raw_input( "(d)iscard or (k)eep?> " )
                     if keepIt in ["d", "k"]:
                         break
 
                 if keepIt == "d":
-                    print "Discarded %s." % topCard
+                    print "%s discards the %s." % (player.name, topCard)
                     player.discard.add( topCard )
                 else:
-                    print "Kept %s." % topCard
+                    print "%s keeps the %s." % (player.name, topCard)
                     player.hand.add( topCard )
 
             else:
-                print "Keeping %s." % topCard
+                print "\n%s draws %s and takes it in hand." % \
+                      (player.name, topCard)
                 player.hand.add( topCard )
 
 
@@ -895,6 +919,9 @@ class Chapel( Card ):
                 player.hand.remove( trashedCard )
             else:
                 print "You don't have that card in hand."
+
+        if not cardsTrashed:
+            raise ActionError()
 
 
 class ThroneRoom( Card ):
@@ -1040,7 +1067,7 @@ class Player:
                 
             self.hand.add( card )
             if not silent:
-                print "%s draws a %s" % (self.name, card.displayName)
+                print "%s draws %s" % (self.name, card.displayName)
 
 
 class TurnState():
@@ -1062,7 +1089,7 @@ class CardSupply():
                       "province": Deck(),
                       "copper": Deck(),
                       "silver": Deck(),
-                      "gold": Deck() }
+                      "gold": Deck()}
 
         self.cardShortcuts = {}
         self.__setup()
@@ -1344,7 +1371,7 @@ def handleAttacks( turn, player, supply ):
                     print "You have 3 or less cards in hand already."
 
                 else:
-                    print "You must discard down to 3 card.\n"
+                    print "You must discard down to 3 cards.\n"
 
                     while True:
                         numCardsInHand = len( player.hand )
@@ -1405,8 +1432,8 @@ def handleAttacks( turn, player, supply ):
                         player.discard.add( newCurse )
 
             if attack.attackName == "council room":
-                print "%s's played a council room." % attack.playerName
-                print "Draw another card."
+                print "%s's council room gives you another card." % \
+                      attack.playerName
                 player.drawCards( 1 )
                 print "\nHand: %s" % player.hand
 
@@ -1739,8 +1766,14 @@ def main():
                     player.inPlay.add( cardInPlay )
 
                     # resolve the card
-                    cardInPlay.play( player, players, turn, supply )
-                    player.numActions -= 1
+                    try:
+                        cardInPlay.play( player, players, turn, supply )
+                        player.numActions -= 1
+                    except ActionError:
+                        
+                        # put everything back
+                        player.inPlay.remove( cardInPlay )
+                        player.hand.add( cardInPlay )
 
                     # remove this option from the menu
                     if player.numActions == 0:
@@ -1755,17 +1788,19 @@ def main():
                         turn.numThroneRooms -= 1
 
                         # do it again
-                        # second play is "free" so shouldn't need to
-                        # increment or decrement numActions for this one
+                        # second play shouldn't decrement numActions
                         print "\nThrone Room active, re-playing %s" % \
                               cardInPlay.displayName
-                        cardInPlay.play( player, players, turn, supply )
+
+                        try:
+                            cardInPlay.play( player, players, turn, supply )
+                        except ActionError():
+                            pass
 
         # *******************************************************
             
         if task == "x":
-            # if a feast was played, the card gets trashed
-            # after it's played
+            # Feast gets trashed after succesfully played
             try:
                 while player.inPlay.contains( supply.cardShortcuts["feast"] ):
                     player.inPlay.remove( supply.cardShortcuts["feast"] )
