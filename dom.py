@@ -13,7 +13,7 @@ duchys (3 vp each) and provinces (6 vp each).
 
 The money supply in the game is represented by copper cards (1
 coin), silver cards (2 coins), and gold cards (3 coins).  Players
-use coin throughout the game to purhcase additional cards from
+use coin throughout the game to purchase additional cards from
 the supply.
 
 Apart from coin and victory point cards, there are 10 action
@@ -32,11 +32,11 @@ completed in order.  The phases are Action, Buy, and Clean-up
 (or ABC, for short). Players may first play and resolve an action
 card.  Next, players may use any coin in their hand (or bonus coins
 from actions taken) to purchase a new card.  Then the clean-up
-phase happens, but this is all magically done by the computer so
+phase happens, but clean-up is magically done by the computer so
 don't worry about it.
 
 Since players do not begin the game with any action cards, the
-first two hands of every game only involves buying cards.
+first two hands of every game only involve buying cards.
 Each player has their own separate discards pile and any cards
 purchased go immediately into that players discard pile.  When a
 player exhausts the deck they are playing from, they shuffle their
@@ -48,17 +48,17 @@ Only after a player has finished playing all their actions are the
 cards in play discarded.  Again, this isn't something to worry
 about too much, the computer magically takes care of all this.)
 
-There are two conditions which end the game. When players have
-purchased all of the Province cards (the highest valued victory
-point cards), the game is over.  Generally, this is how the game
-ends.  The other way the game will end is if players exchaust any 3
-piles of action cards in the supply.  Remember, there are 10 piles
-of action cards players may purchase during the game and each of
-these piles contains 10 cards.  When 3 of the piles are gone, the
-game is over.  The game ends immediately when either of these
-conditions is met, players do not continue to play out their hands.
-When the game ends, players simply count their victory point cards
-to determine the winner.
+There are two conditions, either of which end the game. When
+players have purchased all of the Province cards (the highest
+valued victory point cards), the game is over.  Generally, this
+is how the game ends.  The other way the game will end is if
+players exchaust any 3 piles of action cards in the supply.
+Remember, there are 10 piles of action cards players may buy from
+during the game and each of these piles contain 10 cards.  When
+3 of the piles are gone, the game is over.  The game ends
+immediately when either of these conditions is met, players do not
+continue to play out their hands. When the game ends, players
+simply count their victory point cards to determine the winner.
 
 This is enough of an introduction to be able to play the game,
 although it is by no means an exhaustive set of instructions.
@@ -70,15 +70,6 @@ what all of the various action cards do.  Enjoy!
 # to do
 # python style comments for classes/methods
 # comment style s/b consistent
-
-# bug
-# throne roomed a remodel
-# remodeled copper into estate
-# tried to remodel the esate into gardens (said no estate in hand)
-# this is b/c remodeled card uses buyCard() which just tosses
-# all the card in the discards (need to know the card at least, or else
-# have buyCard() return a card instead
-# or maybe take a deck to put the card into... :)
 
 # bug
 # curse actually should be in buy menu (for evaluating remodel options)
@@ -372,9 +363,7 @@ class Workshop( Card ):
         print "Playing %s.\n" % self.name
 
         # gain any card costing up to 4
-        # if player changes mind about buy, then don't use up this card
-        # this creates a duplicate card, oooops
-        if not buyCard( supply, player, 4, True ):
+        if not buyCard( player.discard, player, supply, 4, True ):
             raise CanceledAction()
 
 
@@ -435,7 +424,8 @@ class Remodel( Card ):
 
         success = False
         while not success:
-            success = buyCard( supply, player, gainValue, True )
+            success = buyCard( player.discard, player, supply,
+                               gainValue, True )
 
 
 class Market( Card ):
@@ -602,7 +592,7 @@ class Feast( Card ):
 
     def play( self, player, players, turn, supply ):
         print "Playing %s.\n" % self.name        
-        if not buyCard( supply, player, 5, True ):
+        if not buyCard( player.discard, player, supply, 5, True ):
             raise CanceledAction()
 
 
@@ -1324,7 +1314,7 @@ def cardHelp( decks ):
 # max spend is the upper limit of cards to display
 # and determines which cards are available for purchase on this buy
 # return whether or not someone bought a card
-def buyCard( supply, player, maxSpend, freeCard = False ):
+def buyCard( destinationDeck, player, supply, maxSpend, freeCard = False ):
     print "\nLet's go shopping!\n"
 
     if not freeCard:
@@ -1358,7 +1348,7 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
 
             card = deck.peek()
 
-            if card.cost == i and card.name != "curse":
+            if card.cost == i:
                 cardChoices.append( card.displayName )
                 
         if len( cardChoices ) > 0:
@@ -1384,6 +1374,11 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
     if cardName == "q":
         return False
 
+    # prevent players from buying curses
+    if card.name == "curse":
+        print "\nYou don't really want a %s" % card.displayName
+        return False
+
     try:
         if supply.decks[card.name].empty():
             print "That deck is empty."
@@ -1404,7 +1399,7 @@ def buyCard( supply, player, maxSpend, freeCard = False ):
     if (( player.spendBonus + player.hand.getCoin() ) >= card.cost or
         freeCard ):
             
-        player.discard.add( card )
+        destinationDeck.add( card )
         print "\n%s bought a %s.\n" % (player.name, card.displayName)
 
         # if they get this "buy" due to another card (ie. remodel)
@@ -1844,7 +1839,7 @@ def main():
                 print "Huh?"
 
         if task == "b":
-            buyCard( supply, player, 8 )
+            buyCard( player.discard, player, supply, 8 )
         
         if task == "+":
             dumpDecks( player )
