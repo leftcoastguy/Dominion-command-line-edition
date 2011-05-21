@@ -68,7 +68,7 @@ what all of the various action cards do.  Enjoy!
 """
 
 # to do
-# python style comments for classes/methods
+# Python style comments for classes/methods
 # comment style s/b consistent
 
 # to do
@@ -86,9 +86,6 @@ what all of the various action cards do.  Enjoy!
 # the whole pattern of moving cards around between decks is rather
 # unfortunate. We need a reference to a card before we do anything,
 # which we typically get from the shortcut dict.
-
-# feature request
-# make (c) count cards pretty
 
 # feature request
 # report first province bought might be cool
@@ -606,12 +603,12 @@ class Adventurer( Card ):
                 newCard = player.deck.deal()
             
             if newCard.value:
-                print "%s draws % and takes it in hand." % \
+                print "%s draws %s and takes it in hand." % \
                       (player.name, newCard.displayName )
                 player.hand.add( newCard )
                 treasureCards += 1
             else:
-                print "%s draws % and discards it." % \
+                print "%s draws %s and discards it." % \
                       (player.name, newCard.displayName )
                 player.discard.add( newCard )
 
@@ -1110,7 +1107,6 @@ class CardFactory():
                         }
 
     def setColorCodes( self ):
-
         # reset the displayName attributes
         self.__cards["estate"].displayName = "\033[32m(e)state\033[39m"
         self.__cards["duchy"].displayName = "\033[32m(d)uchy\033[39m"
@@ -1730,7 +1726,6 @@ def main():
     # set up the game decks
     cardFactory = CardFactory()
 
-    # insert colorama escape codes into the factory
     if colorama:
         cardFactory.setColorCodes()
     
@@ -1750,10 +1745,32 @@ def main():
     # set up the player's deck
     print "\n"
     for i in range(numPlayers):
+
+        # there's no great reason for doing it this way
+        # starting copper is taken from the supply
+        # coin card counts, at least, represent the actual
+        # number of cards in the basic set
         for j in range(7):
-            players[i].deck.add( Copper() )
+            copper = None
+            try:
+                copper = supply.decks["copper"].deal()
+            except ValueError:
+                print "Copper supply is empty during setup."
+                raise SystemExit()
+            players[i].deck.add( copper )
+
+        # just make a copy of an estate from the starting
+        # supply and copy the copy.  This keeps the estate
+        # card counts correct for the start of the game
+        estate = None
+        try:
+            estate = supply.decks["estate"].peek()
+        except ValueError:
+            print "Estate supply is empty during setup."
+            raise SystemExit()
+            
         for j in range(3):
-            players[i].deck.add( Estate() )
+            players[i].deck.add( estate )
 
         players[i].deck.shuffle()
         print "====> %s shuffles %d cards." % \
@@ -1879,10 +1896,41 @@ def main():
             cardHelp( supply.decks )
 
         if task == "c":
+            
+            print "\n%2d %s" % \
+                (len( supply.decks["copper"] ),
+                 supply.decks["copper"].peek().displayName )
+
+            print "%2d %s" % \
+                (len( supply.decks["silver"] ),
+                 supply.decks["silver"].peek().displayName )
+
+            print "%2d %s" % \
+                (len( supply.decks["gold"] ),
+                 supply.decks["gold"].peek().displayName )
+            
             for( deckName, deck ) in supply.decks.items():
-                if deckName in ["copper", "silver", "gold"]:
+                if deckName in ["copper", "silver", "gold",
+                                "estate", "duchy", "province"]:
                     continue
-                print "%s %d" % (deckName, len( deck ))
+                print "%2d %s" % \
+                      (len( deck ),
+                       supply.decks[deckName].peek().displayName)
+                
+            print "%2d %s" % \
+                (len( supply.decks["estate"] ),
+                 supply.decks["estate"].peek().displayName )
+
+            print "%2d %s" % \
+                (len( supply.decks["duchy"] ),
+                 supply.decks["duchy"].peek().displayName )
+
+            print "%2d %s" % \
+                (len( supply.decks["province"] ),
+                 supply.decks["province"].peek().displayName )
+            
+
+
 
         # clean up
         if isNextPlayer:
