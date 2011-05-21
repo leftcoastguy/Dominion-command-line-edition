@@ -276,7 +276,7 @@ class Woodcutter( Card ):
 
 class Moat( Card ):
     def __init__( self ):
-        Card.__init__( self, "moat", "\033[36m(mo)at\033[39m", "mo",
+        Card.__init__( self, "moat", "(mo)at", "mo",
                        2, 0, True, 0,
                        "+2 cards. Defend against other player attacks." )
 
@@ -1018,56 +1018,56 @@ class ThroneRoom( Card ):
 
 class Curse( Card ):
     def __init__( self ):
-        Card.__init__( self, "curse", "\033[35m(cu)rse\033[39m", "cu",
+        Card.__init__( self, "curse", "(cu)rse", "cu",
                        0, 0, False, -1,
                        "-1 victory point.")
         
 
 class Estate( Card ):
     def __init__( self ):
-        Card.__init__( self, "estate", "\033[32m(e)state\033[39m", "e",
+        Card.__init__( self, "estate", "(e)state", "e",
                        2, 0, False, 1,
                        "+1 victory point.")
 
 
 class Gardens( Card ):
     def __init__( self ):
-        Card.__init__( self, "gardens", "\033[32m(ga)rdens\033[39m", "ga",
+        Card.__init__( self, "gardens", "(ga)rdens", "ga",
                        4, 0, False, 1,
                        "1 victory point per 10 cards in your deck.")    
     
 
 class Duchy( Card ):
     def __init__( self ):
-        Card.__init__( self, "duchy", "\033[32m(d)uchy\033[39m", "d",
+        Card.__init__( self, "duchy", "(d)uchy", "d",
                        5, 0, False, 3,
                        "3 victory points.")
 
 
 class Province( Card ):
     def __init__( self ):
-        Card.__init__( self, "province", "\033[32m(p)rovince\033[39m", "p",
+        Card.__init__( self, "province", "(p)rovince", "p",
                        8, 0, False, 6,
                        "6 victory points.")
 
 
 class Copper( Card ):
     def __init__( self ):
-        Card.__init__( self, "copper", "\033[33m(c)opper\033[39m", "c",
+        Card.__init__( self, "copper", "(c)opper", "c",
                        0, 1, False, 0,
                        "1 coin." )
 
 
 class Silver( Card ):
     def __init__( self ):
-        Card.__init__( self, "silver", "\033[33m(s)ilver\033[39m", "s",
+        Card.__init__( self, "silver", "(s)ilver", "s",
                        3, 2, False, 0,
                        "2 coins." )
 
 
 class Gold( Card ):
     def __init__( self ):
-        Card.__init__( self, "gold", "\033[33m(g)old\033[39m", "g",
+        Card.__init__( self, "gold", "(g)old", "g",
                        6, 3, False, 0,
                        "3 coins." )
 
