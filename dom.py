@@ -71,31 +71,24 @@ what all of the various action cards do.  Enjoy!
 # python style comments for classes/methods
 # comment style s/b consistent
 
-# bug
-# curse actually should be in buy menu (for evaluating remodel options)
-# but it shouldn't be buy-able
-
-# bug
-# possible bug in the way I am using gardens. Currently they are being
-# substituted for an action card if they are selected for inclusion in
-# a game and I'm not sure if this is actually correct.  They may just
-# be considered an additional card?
-
-# bug
-# throne room. If you play throne room during a turn but then
-# don't take anymore actions, the throne room is still active on
-# the next turn! This may be fixed, need to test.
-
-# bug
-# colorama escape codes shouldn't be used if colorama
-# module isn't present
+# to do
+# using supply.shortcut dict to get a card instance which
+# is then inserted into a deck somewhere is a bad idea
+# because it's basically generating a new card.  supply.deck
+# should always be used to get cards for use.  Further,
+# the play() is actually getting called on the instance
+# in supply.shortcut, which is not ideal either.
 
 # refactor
 # menu commands should be in a dict of command to functions
 
+# refactor
+# the whole pattern of moving cards around between decks is rather
+# unfortunate. We need a reference to a card before we do anything,
+# which we typically get from the shortcut dict.
+
 # feature request
-# change (c) count kingdom cards option to something like
-# (s) show kingdom cards (name, price, # card remaining)
+# make (c) count cards pretty
 
 # feature request
 # report first province bought might be cool
@@ -119,16 +112,11 @@ what all of the various action cards do.  Enjoy!
 
 import random
 
-
-# if colorama isn't found, that's ok
-# we should just set the colored text strings if the import
-# succeeds and if it doesn't, I could print a message about
-# how the game looks prettier if colorama is installed
-
 try:
     import colorama
 except ImportError:
     print "ImportError: Couldn't find the colorama module."
+    print "The game will use the default terminal colors only."
     colorama = None
 
 
@@ -222,13 +210,6 @@ class Deck:
             else:
                 vp += card.vp
         return vp
-
-    def getNumProvinces( self ):
-        p = 0
-        for card in self.__cards:
-            if card.name == "province":
-                p += 1
-        return p
 
     def __iter__( self ):
         self.__currentCard = 0
@@ -481,27 +462,28 @@ class Mine( Card ):
             if (trashedCard.name in trashList and
                 player.hand.contains( trashedCard )):
 
-                player.hand.remove( trashedCard )
-
+                ore = None
                 if trashedCard.name == "copper":
-
-                    # TO DO: deck could be empty
-                    mineCard = supply.decks["silver"].deal()
-                    player.hand.add( mineCard )
-                    print "%s mined %s to %s and gains it in hand." % \
-                          (player.name,
-                           trashedCard.displayName,
-                           mineCard.displayName)
-
+                    ore = "silver"
                 if trashedCard.name == "silver":
+                    ore = "gold"
 
-                    # TO DO: deck could be empty                    
-                    mineCard = supply.decks["gold"].deal()
-                    player.hand.add( mineCard )
-                    print "%s mined %s to %s and gains it in hand." % \
-                          (player.name,
-                           trashedCard.displayName,
-                           mineCard.displayName)
+                oreCard = None
+                try:
+                    oreCard = supply.decks[ore].deal()
+                except ValueError:
+                    print "The %s supply is empty, mining action" \
+                          "unsuccessful." % \
+                          supply.shortcut[ore].displayName
+                    raise IllegalAction()
+                        
+                player.hand.add( oreCard )
+                player.hand.remove( trashedCard )                    
+                print "%s mined %s to %s and gains it in hand." % \
+                      (player.name,
+                       trashedCard.displayName,
+                       oreCard.displayName)
+
                 break
             
             else:
@@ -646,10 +628,15 @@ class Bureaucrat( Card ):
         print "\n%s plays %s" % \
               (player.name, self.displayName)
 
-        silver = supply.shortcut["silver"]
-        player.deck.push( silver )
-        print "\nA %s added on top of %s's deck.\n" % \
-              (silver.displayName, player.name)
+
+        try:
+            silver = supply.decks["silver"].deal()
+            player.deck.push( silver )
+            print "\nA %s added on top of %s's deck.\n" % \
+                  (silver.displayName, player.name)            
+        except ValueError:
+            print "The %s supply is exhausted." % \
+                  supply.shortcut["silver"].displayName
 
         for other in players:
 
@@ -692,17 +679,18 @@ class Witch( Card ):
             if other.name == player.name:
                 continue
 
-            if other.hand.contains( supply.shortcut.get( "maot" ) ):
-                print "%s deflects the attack with a moat.\n" % other.name
+            if other.hand.contains( supply.shortcut.get( "moat" ) ):
+                print "\n%s deflects the attack with a moat.\n" % other.name
             else:
                 newCurse = None
                 try:
                     newCurse = supply.decks["curse"].deal()
                 except ValueError:
-                    print "The %s supply is empty." % self.displayName
+                    print "\n%s avoids a %s--the supply is empty." % \
+                          (other.name, supply.shortcut["curse"].displayName)
 
                 if newCurse:
-                    print "%s takes a %s!" % \
+                    print "\n%s takes a %s!" % \
                           (other.name, newCurse.displayName)
                     other.discard.add( newCurse )
 
@@ -1121,6 +1109,18 @@ class CardFactory():
                         "adventurer": Adventurer() 
                         }
 
+    def setColorCodes( self ):
+
+        # reset the displayName attributes
+        self.__cards["estate"].displayName = "\033[32m(e)state\033[39m"
+        self.__cards["duchy"].displayName = "\033[32m(d)uchy\033[39m"
+        self.__cards["province"].displayName = "\033[32m(p)rovince\033[39m"
+        self.__cards["copper"].displayName = "\033[33m(c)opper\033[39m"
+        self.__cards["silver"].displayName = "\033[33m(s)ilver\033[39m"
+        self.__cards["gold"].displayName = "\033[33m(g)old\033[39m"
+        self.__cards["curse"].displayName = "\033[35m(cu)rse\033[39m"
+
+                       
     def create( self, cardName ):
         card = None
         try:
@@ -1534,27 +1534,27 @@ def selectKingdomCards():
         print "Create your own layouts by adding them to %s\n" % \
               DECK_LAYOUTS_FILE
 
-        for ( shortcut, layoutName ) in layoutNames.items():
-            print "(%s) %s" % ( shortcut, layoutName )
+        for (shortcut, layoutName) in layoutNames.items():
+            print "(%s) %s" % (shortcut, layoutName)
 
         # A bit of a hack, but generate a new random set
         # here each time.
         deckLayouts["r"] = ["moat"]
         deckLayouts["r"].extend( random.sample(
-                [ "cellar", "woodcutter", "workshop", "smithy", 
-                  "remodel", "market", "mine", "militia", 
-                  "village", "moneylender", "chancellor", 
-                  "thief", "witch", "festival", "laboratory", 
-                  "feast", "adventurer", "bureaucrat", "spy", 
-                  "library", "council room", "throne room",
-                  "gardens", "chapel" ], 9 ))        
+                ["cellar", "woodcutter", "workshop", "smithy", 
+                 "remodel", "market", "mine", "militia", 
+                 "village", "moneylender", "chancellor", 
+                 "thief", "witch", "festival", "laboratory", 
+                 "feast", "adventurer", "bureaucrat", "spy", 
+                 "library", "council room", "throne room",
+                 "gardens", "chapel"], 9 ))        
 
         while True:
-            choice = raw_input( "\nCard set> " )
+            choice = raw_input( "\nLayout> " )
             if choice in layoutNames:
                 break
             else:
-                print "Please choose a valid card set."
+                print "Please choose a valid layout."
         
         cardSet = deckLayouts[choice]
 
@@ -1590,14 +1590,14 @@ def isGameOver( players, supply ):
 
     
     gameOver = False
-    if supply.decks[ "province" ].empty():
+    if supply.decks["province"].empty():
         print "The province deck is empty."
         gameOver = True
 
     # look at kingdom card decks
     numEmptyDecks = 0
     emptyDeckNames = []
-    for ( deckName, deck ) in supply.decks.items():
+    for (deckName, deck) in supply.decks.items():
         if deckName in ["estate", "duchy", "province",
                         "copper", "silver", "gold", "curse"]:
             continue
@@ -1623,9 +1623,9 @@ def isGameOver( players, supply ):
             counts = {}
             for card in players[i].deck:
                 if counts.has_key( card.name ):
-                    counts[ card.name ] += 1
+                    counts[card.name] += 1
                 else:
-                    counts[ card.name ] = 1
+                    counts[card.name] = 1
 
             # for now, stop dumping out the final
             # decks
@@ -1644,8 +1644,11 @@ def isGameOver( players, supply ):
 def playActionCard( player, players, turn, supply ):
 
     while True:
-        card = raw_input("\nCard to play> ")
-        # first see if they entered a shortcut
+        card = raw_input("\nCard to play (q to quit)> ")
+
+        if card == "q":
+            return
+        
         try:
             card = supply.shortcut[card]
             break
@@ -1726,6 +1729,11 @@ def main():
 
     # set up the game decks
     cardFactory = CardFactory()
+
+    # insert colorama escape codes into the factory
+    if colorama:
+        cardFactory.setColorCodes()
+    
     supply = CardSupply( numPlayers, cardFactory )
 
     # choose kingdom cards to use
@@ -1748,8 +1756,8 @@ def main():
             players[i].deck.add( Estate() )
 
         players[i].deck.shuffle()
-        print "====> %s shuffles %d cards." % (players[i].name,
-                                         len( players[i].deck))
+        print "====> %s shuffles %d cards." % \
+              (players[i].name, len(players[i].deck))
 
         # deal me a new one partna
         players[i].drawCards( 5, silent = True )
