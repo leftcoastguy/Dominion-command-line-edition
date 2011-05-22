@@ -80,9 +80,16 @@ what all of the various action cards do.  Enjoy!
 # in supply.shortcut, which is not ideal either.
 
 # to do
-# the game over display is fairly weak
+# the "game over" display is fairly weak
 # I'd like to rank players, show their score
 # and also show a nice summary of their decks somehow
+# at the very least needs to show VP card so players
+# could do a manual VP count if they wish
+
+# to do
+# the game is way beyond the point of needing some automated
+# test cases. Finding bugs from my refactoring all over the
+# place.
 
 # refactor
 # menu commands should be in a dict of command to functions
@@ -91,6 +98,11 @@ what all of the various action cards do.  Enjoy!
 # the whole pattern of moving cards around between decks is rather
 # unfortunate. We need a reference to a card before we do anything,
 # which we typically get from the shortcut dict.
+# one thing I have to note here is that sometimes this is a desirable
+# pattern, where we need to draw a card from someone's deck (library)
+# and ask them what they want to do with it.  However, in this case
+# it should be possible to use the peek() method to see what the card
+# is and then call the right function to move the card between decks.
 
 # feature request
 # report first province bought might be cool
@@ -271,7 +283,8 @@ class Woodcutter( Card ):
                        "+1 buy. +2 spend." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +1 buy, +2 spend.\n" % self.name
+        print "\n%s plays %s, +1 buy, +2 spend.\n" % \
+              (player.name, self.displayName)
         player.numBuys += 1
         player.spendBonus += 2
 
@@ -283,7 +296,8 @@ class Moat( Card ):
                        "+2 cards. Defend against other player attacks." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +2 cards." % self.name
+        print "\n%s plays %s, +2 cards." % \
+              (player.name, self.displayName)
         player.drawCards( 2 )
 
 
@@ -295,12 +309,13 @@ class Cellar( Card ):
                        "+1 card per card discarded." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +1 action." % self.name
+        print "\n%s plays %s, +1 action..." % \
+              (player.name, self.displayName)
         player.numActions += 1
         numCardsDiscarded = 0
         
         while True:
-            print "\nhand: %s" % player.hand
+            print "\nIn hand: %s" % player.hand
             discardCard = raw_input("Card name to discard (q to quit)> ")
 
             if discardCard == "q":
@@ -313,7 +328,8 @@ class Cellar( Card ):
                 continue
                 
             if player.hand.contains( cardToRemove ):
-                print "Discarded %s." % cardToRemove.displayName
+                print "%s discards %s." % \
+                      (player.name, cardToRemove.displayName)
                 numCardsDiscarded += 1
                 player.hand.remove( cardToRemove )
                 player.discard.add( cardToRemove )
@@ -331,7 +347,8 @@ class Village( Card ):
                        "+1 card.  +2 actions.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +2 actions, +1 card.\n" % self.name
+        print "\n%s plays %s, +2 actions, +1 card." % \
+              (player.name, self.displayName)
         player.drawCards( 1 )
         player.numActions += 2
 
@@ -343,7 +360,8 @@ class Workshop( Card ):
                        "Gain a card costing up to 4." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "%s plays %s." % \
+              (player.name, self.displayName)
 
         # gain any card costing up to 4
         if not buyCard( player.discard, player, supply, 4, True ):
@@ -358,7 +376,9 @@ class Militia( Card ):
                        "down to 3 cards." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +2 spend.\n" % self.name
+        print "\n%s plays %s, +2 spend." % \
+              (player.name, self.displayName)
+        print "\nIn turn, each other player will discard down to 3 cards."
         player.spendBonus += 2
         turn.attacksInPlay.append( Attack( self.name, player.name ))
 
@@ -370,7 +390,8 @@ class Smithy( Card ):
                        "+3 cards.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +3 cards.\n" % self.name
+        print "%s plays %s, +3 cards.\n" % \
+              (player.name, self.displayName)
         player.drawCards( 3 )
 
         
@@ -382,7 +403,7 @@ class Remodel( Card ):
                        "to 2 more coins." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "%s plays %s." % (player.name, self.displayName)
 
         while True:
             choice = raw_input("Select a card to trash (q to quit)> ")
@@ -418,8 +439,8 @@ class Market( Card ):
                        "+1 card.  +1 action.  +1 buy.  +1 spend.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +1 card, +1 action, +1 buy, +1 spend.\n" % \
-              (self.name)
+        print "%s plays %s, +1 card, +1 action, +1 buy, +1 spend.\n" % \
+              (player.name, self.displayName)
         player.numActions += 1
         player.numBuys += 1
         player.spendBonus += 1
@@ -434,7 +455,7 @@ class Mine( Card ):
                        "Trash a silver, gain a gold in hand." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "%s plays %s." % (player.name, self.displayName)        
 
         # dont get stuck in endless input loop if player has no valid
         # coins to trash
@@ -499,7 +520,7 @@ class Moneylender( Card ):
                        "Trash a copper in hand. If you do, +3 spend.")    
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "%s plays %s." % (player.name, self.displayName)                
 
         copperCard = supply.shortcut["copper"]
         if not player.hand.contains( copperCard ):
@@ -519,15 +540,16 @@ class Chancellor( Card ):
                        "deck into your discard pile.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +2 spend.\n" % self.name
+        print "\n%s plays %s, +2 spend." % \
+              (player.name, self.displayName)
 
         while True:
             if len( player.deck ) == 1:
-                prompt = "Discard the remainder of your deck? \
-                (%d card remains) (y/n) >" % len( player.deck )
+                prompt = "Discard the remainder of your deck? " \
+                "(%d card remains) (y/n) >" % len( player.deck )
             else:
-                prompt = "Discard the remainder of your deck? \
-                (%d cards remain) (y/n) >" % len( player.deck )
+                prompt = "Discard the remainder of your deck? " \
+                "(%d cards remain) (y/n) >" % len( player.deck )
                 
             choice = raw_input( prompt )
             if choice in ["y", "n"]:
@@ -536,9 +558,9 @@ class Chancellor( Card ):
         if choice == "y":
             player.discard.extend( player.deck )
             player.deck = Deck()
-            print "Deck discarded."
+            print "%s discards deck." % player.name
         else:
-            print "Keeping your deck in play."
+            print "%s keeps deck in play." % player.name
 
         player.spendBonus += 2
 
@@ -550,7 +572,8 @@ class Festival( Card ):
                        "+2 actions.  +1 buy.  +2 spend.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +2 actions, +1 buy, +2 spend.\n" % self.name
+        print "\n%s plays %s, +2 actions, +1 buy, +2 spend.\n" % \
+              (player.name, self.displayName)
         player.numActions += 2      
         player.numBuys += 1
         player.spendBonus += 2
@@ -563,7 +586,8 @@ class Laboratory( Card ):
                        "+2 cards.  +1 action.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s, +1 action, +2 cards.\n" % self.name        
+        print "\n%s plays %s, +1 action, +2 cards." % \
+              (player.name, self.displayName)
         player.numActions += 1
         player.drawCards( 2 )
 
@@ -575,7 +599,7 @@ class Feast( Card ):
                        "Trash this card. Gain a card costing up to 5 coins.")
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name        
+        print "\n%s plays %s.\n" % (player.name, self.displayName)
         if not buyCard( player.discard, player, supply, 5, True ):
             raise CanceledAction()
 
@@ -589,12 +613,13 @@ class Adventurer( Card ):
                        "your hand and discard the other revealed cards." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "\n%s plays %s" % (player.name, self.displayName)
 
-        # if the player somehow doesn't have 2 treasure cards
-        # in their deck (unlikely), this is an endless loop, oops
-        treasureCards = 0
-        
+        # to do:
+        # although unlikely, it's possible that the player
+        # won't have 2 additional treasure cards to add to their
+        # hand, in which case we loop infinitely
+        treasureCards = 0        
         while treasureCards < 2:
 
             try:
@@ -627,7 +652,7 @@ class Bureaucrat( Card ):
                        "and puts it on top of their deck." )
 
     def play( self, player, players, turn, supply ):
-        print "\n%s plays %s" % \
+        print "\n%s plays %s." % \
               (player.name, self.displayName)
 
 
@@ -637,9 +662,10 @@ class Bureaucrat( Card ):
             print "\nA %s added on top of %s's deck.\n" % \
                   (silver.displayName, player.name)            
         except ValueError:
-            print "The %s supply is exhausted." % \
+            print "\nThe %s supply is exhausted." % \
                   supply.shortcut["silver"].displayName
 
+        print
         for other in players:
 
             if other.name == player.name:
@@ -677,22 +703,23 @@ class Witch( Card ):
 
         player.drawCards( 2 )
 
+        print
         for other in players:
             if other.name == player.name:
                 continue
 
             if other.hand.contains( supply.shortcut.get( "moat" ) ):
-                print "\n%s deflects the attack with a moat.\n" % other.name
+                print "%s deflects the attack with a moat.\n" % other.name
             else:
                 newCurse = None
                 try:
                     newCurse = supply.decks["curse"].deal()
                 except ValueError:
-                    print "\n%s avoids a %s--the supply is empty." % \
+                    print "%s avoids the %s--the supply is empty." % \
                           (other.name, supply.shortcut["curse"].displayName)
 
                 if newCurse:
-                    print "\n%s takes a %s!" % \
+                    print "%s takes a %s!" % \
                           (other.name, newCurse.displayName)
                     other.discard.add( newCurse )
 
@@ -711,9 +738,7 @@ class Spy( Card ):
         player.drawCards( 1 )
         player.numActions += 1
 
-        # I hate to do this in the card itself, because now it requires
-        # passing in all the other players.  However, it will be faster/
-        # easier to resolve it right now.
+        print
         for other in players:
             
             isPlayer = False
@@ -737,23 +762,24 @@ class Spy( Card ):
 
 
             if isPlayer:
-                print "\n%s, your next card is %s." % \
+                print "%s, your next card is %s." % \
                       (other.name, topCard.displayName)
             else:
-                print "\nThe top card on %s's deck is %s" % \
+                print "The top card on %s's deck is %s" % \
                       (other.name, topCard.displayName)
 
             while True:
-                fate = raw_input( "(d)iscard it or (p)ut it back? >" )
+                prompt = "(d)iscard it or (p)ut it back? >"
+                fate = raw_input( prompt )
                 if fate in ["d", "p"]:
                     break
 
             if fate == "d":
-                print "\nDiscarded %s's %s" % \
+                print "Discarded %s's %s" % \
                       (other.name, topCard.displayName)
                 other.discard.add( topCard )
             else:
-                print "\n%s's %s goes back." % \
+                print "%s's %s goes back." % \
                       (other.name, topCard.displayName)
                 other.deck.push( topCard )
 
@@ -771,7 +797,9 @@ class Thief( Card ):
     def play( self, player, players, turn, supply ):
         print "\n%s plays %s." % (player.name, self.displayName)
 
-        # this is a fucking nightmare
+        # this code is pretty much as it was originally written
+        # (in haste). It's fairly awful and should be refactored
+        # however there is much else to do and the code works.
         localTrash = []
         for other in players:
 
@@ -883,12 +911,16 @@ class Thief( Card ):
                 
             else:
 
-                # In this case, the cards weren't actually revealed
-                # and they just go back to the other player's hand
-                for card in reveal:
-                    other.hand.add( card )
-                continue
+                # The reveal list ordered such that the first
+                # card is the most recently take card from the
+                # other players deck and the second card was
+                # the card we took first, hence remove from the
+                # end of the reveal list and push to the front
+                # of the deck
+                while len( reveal ):
+                    other.deck.push( reveal.pop() )
 
+        
         # now rifle through the trash you thief!
         if len( localTrash ):
             print "\n%s, you may steal any of the trashed cards.\n" % \
@@ -908,7 +940,7 @@ class Thief( Card ):
                     print "%s tosses the %s." % \
                           (player.name, card.displayName)
         else:
-            print "No one had treasure to steal."
+            print "There is no treasure to steal."
 
 
 class Library( Card ):
@@ -919,7 +951,7 @@ class Library( Card ):
                        "discard any actions cards as you draw them." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s." % self.name
+        print "\n%s plays %s." % self.name
         
         while len( player.hand ) < 7:
             try:
@@ -933,21 +965,21 @@ class Library( Card ):
                 topCard = player.deck.deal()
 
             if topCard.action:
-                print "\n%s draws %s." % (player.name, topCard)                
+                print "%s draws %s" % (player.name, topCard)                
                 while True:
                     keepIt = raw_input( "(d)iscard or (k)eep?> " )
                     if keepIt in ["d", "k"]:
                         break
 
                 if keepIt == "d":
-                    print "%s discards the %s." % (player.name, topCard)
+                    print "%s discards the %s" % (player.name, topCard)
                     player.discard.add( topCard )
                 else:
-                    print "%s keeps the %s." % (player.name, topCard)
+                    print "%s keeps the %s" % (player.name, topCard)
                     player.hand.add( topCard )
 
             else:
-                print "\n%s draws %s and takes it in hand." % \
+                print "%s draws %s and takes it in hand." % \
                       (player.name, topCard)
                 player.hand.add( topCard )
 
@@ -963,11 +995,13 @@ class CouncilRoom( Card ):
         player.drawCards( 4 )
         player.numBuys += 1
 
+        print "\nThe other players all draw a card."
         for other in players:
             if other.name == player.name:
                 continue
-            
-            other.drawCards( 1 )
+
+            print "%s draws a card and takes it in hand." % other.name
+            other.drawCards( 1, silent = True )
         
 
 class Chapel( Card ):
@@ -977,7 +1011,7 @@ class Chapel( Card ):
                        "Trash up to 4 cards." )
 
     def play( self, player, players, turn, supply ):
-        print "Playing %s.\n" % self.name
+        print "\n%s plays %s" % self.name
         cardsTrashed = 0
 
         while True:
@@ -1012,7 +1046,8 @@ class ThroneRoom( Card ):
                        "Choose an action card in your hand.  Play it twice." )
 
     def play( self, player, players, turn, supply ):
-        print "Throne Room, play your next action card twice.\n"
+        print "\n%s plays %s" % (player.name, self.displayName)
+        print "\nYou play your next action card twice."
         turn.numThroneRooms += 1
         player.numActions += 1
         turn.chainingThroneRooms = True
