@@ -951,7 +951,7 @@ class Library( Card ):
                        "discard any actions cards as you draw them." )
 
     def play( self, player, players, turn, supply ):
-        print "\n%s plays %s." % self.name
+        print "\n%s plays %s." % (player.name, self.displayName)
         
         while len( player.hand ) < 7:
             try:
