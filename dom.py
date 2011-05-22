@@ -1011,7 +1011,7 @@ class Chapel( Card ):
                        "Trash up to 4 cards." )
 
     def play( self, player, players, turn, supply ):
-        print "\n%s plays %s" % self.name
+        print "\n%s plays %s" % (player.name, self.name)
         cardsTrashed = 0
 
         while True:
@@ -1941,15 +1941,15 @@ def main():
             
             print "\n%2d %s" % \
                 (len( supply.decks["copper"] ),
-                 supply.decks["copper"].peek().displayName )
+                 supply.shortcut["copper"].displayName )
 
             print "%2d %s" % \
                 (len( supply.decks["silver"] ),
-                 supply.decks["silver"].peek().displayName )
+                 supply.shortcut["silver"].displayName )
 
             print "%2d %s" % \
                 (len( supply.decks["gold"] ),
-                 supply.decks["gold"].peek().displayName )
+                 supply.shortcut["gold"].displayName )
             
             for( deckName, deck ) in supply.decks.items():
                 if deckName in ["copper", "silver", "gold",
@@ -1957,19 +1957,19 @@ def main():
                     continue
                 print "%2d %s" % \
                       (len( deck ),
-                       supply.decks[deckName].peek().displayName)
+                       supply.shortcut[deckName].displayName)
                 
             print "%2d %s" % \
                 (len( supply.decks["estate"] ),
-                 supply.decks["estate"].peek().displayName )
+                 supply.shortcut["estate"].displayName )
 
             print "%2d %s" % \
                 (len( supply.decks["duchy"] ),
-                 supply.decks["duchy"].peek().displayName )
+                 supply.shortcut["duchy"].displayName )
 
             print "%2d %s" % \
                 (len( supply.decks["province"] ),
-                 supply.decks["province"].peek().displayName )
+                 supply.shortcut["province"].displayName )
             
 
 
