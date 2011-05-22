@@ -79,6 +79,11 @@ what all of the various action cards do.  Enjoy!
 # the play() is actually getting called on the instance
 # in supply.shortcut, which is not ideal either.
 
+# to do
+# the game over display is fairly weak
+# I'd like to rank players, show their score
+# and also show a nice summary of their decks somehow
+
 # refactor
 # menu commands should be in a dict of command to functions
 
@@ -1111,10 +1116,12 @@ class CardFactory():
         self.__cards["estate"].displayName = "\033[32m(e)state\033[39m"
         self.__cards["duchy"].displayName = "\033[32m(d)uchy\033[39m"
         self.__cards["province"].displayName = "\033[32m(p)rovince\033[39m"
+        self.__cards["gardens"].displayName = "\033[32m(ga)ardens\033[39m"
         self.__cards["copper"].displayName = "\033[33m(c)opper\033[39m"
         self.__cards["silver"].displayName = "\033[33m(s)ilver\033[39m"
         self.__cards["gold"].displayName = "\033[33m(g)old\033[39m"
         self.__cards["curse"].displayName = "\033[35m(cu)rse\033[39m"
+        self.__cards["moat"].displayName = "\033[36m(mo)at\033[39m"
 
                        
     def create( self, cardName ):
@@ -1582,7 +1589,7 @@ def showTitleFromFile():
     print title
 
 
-def isGameOver( players, supply ):
+def isGameOver( players, turn, supply ):
 
     
     gameOver = False
@@ -1794,7 +1801,7 @@ def main():
         
         player = players[currentPlayerNumber]
 
-        if isGameOver( players, supply ):
+        if isGameOver( players, turn, supply ):
             break
 
         # set menu options which are always available
