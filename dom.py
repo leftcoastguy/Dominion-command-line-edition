@@ -92,7 +92,7 @@ what all of the various action cards do.  Enjoy!
 # place.
 
 # refactor
-# menu commands should be in a dict of command to functions
+# menu commands should be in a dict of commands to functions
 
 # refactor
 # the whole pattern of moving cards around between decks is rather
@@ -840,6 +840,9 @@ class Thief( Card ):
                     treasureCard = reveal[1]
                     otherCard = reveal[0]
 
+                # colorama crashes cygwin if color is sent to
+                # raw input.  could fix this on cygwin by using
+                # name attribute instead of display name.
                 prompt = "%s, trash the %s? (y/n)> " % \
                          (player.name, treasureCard.displayName)
                 while True:
