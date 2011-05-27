@@ -616,20 +616,24 @@ class Adventurer( Card ):
         print "\n%s plays %s" % (player.name, self.displayName)
 
         # to do:
-        # although unlikely, it's possible that the player
-        # won't have 2 additional treasure cards to add to their
-        # hand, in which case we loop infinitely
+        # fix case where there are less than 2 treasure remaining
+        # in the players deck and discards. 
         treasureCards = 0        
         while treasureCards < 2:
 
             try:
                 newCard = player.deck.deal()
             except ValueError:
+
+                if player.discard.empty():
+                    print "No more cards to deal"
+                    break
+                
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
                 print "====> %s shuffles %d cards." % \
                       (player.name, len( player.deck )) 
-                player.discard = Deck()
+                player.discard = Deck()                
                 newCard = player.deck.deal()
             
             if newCard.value:
@@ -753,6 +757,11 @@ class Spy( Card ):
             try:
                 topCard = other.deck.deal()
             except ValueError:
+
+                if other.discard.empty():
+                    print "No more cards to deal"
+                    continue
+                
                 other.deck.extend( other.discard )
                 other.deck.shuffle()
                 print "====> %s shuffles %d cards." % \
@@ -810,12 +819,19 @@ class Thief( Card ):
                 print "\n%s deflects the attack with a moat." % other.name
                 continue
 
-            treasure = 0 # using len( reveal ) would be safer
+            # to do: should just use len(reveal) and get rid of
+            # treasure variable altogether
+            treasure = 0
             reveal = []
             for i in range(2):
                 try:
                     topCard = other.deck.deal()
                 except ValueError:
+
+                    if other.discard.empty():
+                        print "No more cards to deal"
+                        break
+                    
                     other.deck.extend( other.discard )
                     other.deck.shuffle()
                     print "====> %s shuffles %d cards." % \
@@ -827,6 +843,8 @@ class Thief( Card ):
                     treasure += 1
                 reveal.append( topCard )
 
+            # to do: there is a ridiculously small chance that
+            # len(reveal) is less than 2.  Fix it.
             print "\n%s reveals %s and %s." % \
                   (other.name,
                    reveal[0].displayName,
@@ -915,7 +933,7 @@ class Thief( Card ):
             else:
 
                 # The reveal list ordered such that the first
-                # card is the most recently take card from the
+                # card is the most recently taken card from the
                 # other players deck and the second card was
                 # the card we took first, hence remove from the
                 # end of the reveal list and push to the front
@@ -925,7 +943,7 @@ class Thief( Card ):
 
         
         # now rifle through the trash you thief!
-        if len( localTrash ):
+        if len(localTrash):
             print "\n%s, you may steal any of the trashed cards.\n" % \
                   player.name
             
@@ -960,12 +978,15 @@ class Library( Card ):
             try:
                 topCard = player.deck.deal()
             except ValueError:
+                if player.discard.empty():
+                    print "No more cards to deal"
+                    break
+                
                 player.deck.extend( player.discard )
                 player.deck.shuffle()
                 print "====> %s shuffles %d cards." % \
                       (player.name, len( player.deck ))                 
                 player.discard = Deck()
-                topCard = player.deck.deal()
 
             if topCard.action:
                 print "%s draws %s" % (player.name, topCard)                
@@ -1190,6 +1211,10 @@ class Player:
             try:
                 card = self.deck.deal()
             except ValueError:
+                if self.discard.empty():
+                    print "No more cards to deal"
+                    return
+                
                 self.deck.extend( self.discard )
                 self.deck.shuffle()
                 print "====> %s shuffles %d cards." % \
