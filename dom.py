@@ -67,6 +67,16 @@ what all of the various action cards do.  Enjoy!
 
 """
 
+# bug
+# Thieving from a depleted player.
+# Let the player who has used the Curse card to discard most of their
+# cards (.ie len(player.deck) + len(player.discard) < 2 )
+# be referred to as a "depleted" player.
+# If someone plays the Thief, the depleted player exposes a bug in
+# Thief that always expects 2 more cards to be available in the other
+# players decks. Until the Thief is fixed, allow the game to continue
+# by ignoring the depleted player.
+
 # to do
 # Python style comments for classes/methods
 # comment style s/b consistent
@@ -843,8 +853,15 @@ class Thief( Card ):
                     treasure += 1
                 reveal.append( topCard )
 
-            # to do: there is a ridiculously small chance that
-            # len(reveal) is less than 2.  Fix it.
+
+            # to do:
+            # remove this and handle these cases correctly
+            # this is extremely unlikely, however
+            if len(reveal) < 2:
+                print "%s has less than 2 cards left, oops" % \
+                      other.name
+                continue
+
             print "\n%s reveals %s and %s." % \
                   (other.name,
                    reveal[0].displayName,
